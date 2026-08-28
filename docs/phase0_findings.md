@@ -1,93 +1,86 @@
-# Phase 0 findings: public-data feasibility
+# Phase 0 结论：公开数据可行性
 
-## Main conclusion
+## 主结论
 
-The project is broadly feasible with public data. Market quotes, exchange disclosures, weather, and macro series are accessible enough for research. Phase 0 also verified operating observations directly in official 2024 annual reports for a toll-road REIT (508018), a hydropower REIT (508026), and a logistics REIT (508056).
+项目基于公开数据总体可行。行情、交易所披露、天气和宏观数据均足以支持研究。Phase 0 还直接核验了三类 REIT 的 2024 年年度报告：高速公路 508018、水电 508026、仓储物流 508056，确认资产级经营指标真实存在。
 
-The conclusion is not that a production database already exists. Public disclosures prove that the observations exist; extracting consistent, point-in-time panels remains the main engineering task.
+这并不代表市场上已经有可直接使用的生产级数据库。公开报告证明了观测值存在，而建立口径一致、来源可追溯、符合历史信息时点的长期面板，仍是主要工程任务。
 
-## Data-availability traffic light
+## 数据可得性红绿灯
 
-### GREEN
+### 绿色
 
-- **REIT prices and volume:** AKShare exposes a current universe/quote table and documents a daily-history endpoint. It wraps an unofficial Eastmoney source, so raw caching and monitoring are still necessary.
-- **Exchange announcements and periodic reports:** SSE and SZSE maintain public REIT disclosure portals. Official reports contain both financial and asset-level operating measures.
-- **Weather data:** Open-Meteo provides long reanalysis histories and a separate historical-forecast archive without an API key for non-commercial use.
-- **Macro data:** national and regional series are publicly available, although revisions and release dates must be tracked.
+- **REIT 价格和成交量**：AKShare 提供当前名录／实时行情及日线接口，但其非官方上游数据源仍需缓存和监控。
+- **交易所公告和定期报告**：上交所、深交所均有公开披露入口，报告同时包含财务和资产级经营指标。
+- **天气数据**：Open-Meteo 提供历史再分析和单独的历史预报接口。
+- **宏观数据**：全国和区域数据公开可得，但应跟踪发布日期与修订。
 
-### AMBER
+### 黄色
 
-- **Standardised operating fundamentals:** the data exist but labels, units, table layouts, period definitions, and asset boundaries differ across reports.
-- **Historical toll-road traffic:** actual traffic is disclosed in REIT reports, but a free, uniform asset-level external history is not readily available.
-- **Regional or asset-level alternative data:** joining requires a maintained asset geolocation table and careful geographic aggregation.
+- **标准化经营基本面**：数据存在，但名称、单位、表格、期间定义和资产边界不统一。
+- **高速公路历史交通**：REIT 报告中有实际车流，免费的统一外部资产级长历史并不容易获得。
+- **区域级／资产级另类数据**：需要持续维护底层资产地理表，并谨慎选择空间聚合范围。
 
-### RED / optional
+### 红色／可选
 
-- Free historical shopping-centre footfall.
-- High-frequency historical mobile-location data.
-- Proprietary consumer-location data.
+- 免费历史商场客流；
+- 高频历史移动定位；
+- 专有消费者位置数据。
 
-These are not prerequisites for the first pilot.
+这些不是首个试点的必要条件。
 
-## Verified Phase 0 evidence
+## Phase 0 已核验样本
 
-The checked sample is stored in [`data/samples/phase0_operating_metrics.csv`](../data/samples/phase0_operating_metrics.csv). Every row links to an official SSE report and preserves the reported unit/scale.
+样本保存在 [phase0_operating_metrics.csv](../data/samples/phase0_operating_metrics.csv)。每一行都链接至上交所正式报告，并保留原披露单位。
 
-| Symbol | Asset type | Period | Verified examples | Primary report |
+| 代码 | 资产类型 | 期间 | 已核验示例 | 正式来源 |
 |---|---|---|---|---|
-| 508018 | Toll road | 2024 | daily total/passenger/freight traffic; toll revenue | [2024 annual report](https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf) |
-| 508026 | Hydropower | 2024 | generation; effective generation hours | [2024 annual report](https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508026_20250328_T61T.pdf) |
-| 508056 | Logistics | 2024 | rentable/leased area; occupancy; rent; collection rate | [2024 annual report](https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf) |
+| 508018 | 高速公路 | 2024 年 | 日均总／客／货车流量、通行费收入 | [2024 年年度报告](https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf) |
+| 508026 | 水电 | 2024 年 | 发电量、有效发电小时 | [2024 年年度报告](https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508026_20250328_T61T.pdf) |
+| 508056 | 仓储物流 | 2024 年 | 面积、出租率、租金、收缴率 | [2024 年年度报告](https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf) |
 
-This is evidence of existence, not yet a longitudinal coverage audit. Reported values were transcribed only after checking the official report text. No estimated, forecast, or unverified number is included.
+这些数据只在核对正式报告后录入，没有加入估算、预测或无法验证的数字。它们证明数据存在，但不是完整的历史覆盖审计。
 
-## The key insight
+## 最关键洞察
 
-The central problem is not “do these operating data exist?” It is:
+真正的问题不是“这些经营数据有没有”，而是：
 
-> How can announcements from different REITs, asset types, periods, and formats be standardised into a durable historical panel?
+> 如何把不同 REIT、不同资产类型、不同期间和不同格式的公告，标准化成长期可用的历史面板？
 
-The parser in Phase 0 is intentionally only a keyword/regex candidate generator. PDF text recovery, OCR, table reconstruction, semantic validation, unit conversion, asset lineage after expansion, and human quality control are unsolved layers.
+Phase 0 的解析器有意只实现关键词／正则候选提取。PDF 文本恢复、OCR、表格重建、语义校验、单位转换、扩募后的资产沿革和人工质检，仍是后续层次。
 
-## Where a research moat can form
+## 研究壁垒
 
-The defensible stack is the combination of:
+可能形成壁垒的是以下组合：
 
-1. a REIT operating-disclosure parser;
-2. a standardised asset-level fundamental panel;
-3. bottom-asset geolocation and lineage;
-4. point-in-time joins to weather, holidays, transport, logistics, consumption, and regional macro data.
+1. REIT 经营披露解析器；
+2. 标准化资产级基本面历史面板；
+3. 底层资产地理信息和资产沿革；
+4. 天气、节假日、交通、物流、消费和区域宏观的严格时点连接。
 
-Prices alone are not the moat. Consistent historical definitions, source lineage, publication timestamps, and revision handling are.
+价格本身不是壁垒。长期一致的定义、原始来源、公告时间戳和修订处理才是。
 
-## Recommended first pilot: hydropower REIT 508026
+## 推荐首个试点：水电 REIT 508026
 
-Subject to repeated public-report coverage, the first pilot should test:
+首个试点研究链路为：
 
-`rainfall -> inflow / hydrology -> generation -> settled electricity -> revenue -> distributable cash flow / DPU`
+`降雨 → 来水／水文 → 发电量 → 结算电量 → 收入 → 可供分配现金流／DPU`
 
-The 2024 annual report confirms that generation and effective generation hours are disclosed. It also explicitly identifies inflow as an operating risk. The next gate is to build a repeated quarterly history and establish the appropriate upstream catchment/geographic weather mapping; a single annual observation is not sufficient for a model.
+Phase 0 确认发电量和利用小时存在。Phase 1 第一轮又确认这四项核心指标在 2024Q2—2026Q1 连续披露，但目前仅有 8 个季度，因此数据管线值得继续建设，预测模型仍需等待更长历史或更高频可信数据。详见 [Phase 1 水电试点结论](phase1_hydropower_findings.md)。
 
-## Point-in-time weather warning
+## 天气信息时点警告
 
-Open-Meteo's Historical Weather API is reanalysis: an ex-post reconstruction that is appropriate for explaining realised generation. It is not evidence of what a trader knew at the time.
+Open-Meteo 历史天气属于事后再分析，适合解释已实现发电量，不代表交易者在历史时点已经知道这些数据。
 
-Open-Meteo separately provides a Historical Forecast API whose continuous series stitches the first hours of successive operational model runs. For a strict trading backtest, lead time and issue timestamp still matter. A robust design should use archived previous/single runs when possible and store the forecast issue time alongside the valid time.
+- **事后再分析天气**：用于解释回归和已实现天气标签；
+- **决策时点可得的历史预报**：用于可交易 nowcast 和严格回测。
 
-In short:
+混用两者会产生前视偏差。未来应保存预测发布时间、有效时间和提前期，必要时使用 previous runs 或 single runs，而不是默认拼接后的历史预测序列具有固定提前期。
 
-- **ex-post reanalysis weather:** explanatory regression and realised-weather labels;
-- **forecast available at the decision time:** tradable nowcast/backtest features.
+## 剩余风险
 
-Confusing the two creates look-ahead bias.
-
-## Remaining risks and Phase 1 gate
-
-- AKShare endpoints depend on an unofficial upstream website and vary by AKShare version.
-- PDFs can be scanned, have broken reading order, or represent tables poorly after text extraction.
-- Identical labels can use different scopes (fund-level versus project-level), tax bases, time aggregation, or units.
-- Expansion and asset injection can break historical comparability unless asset lineage is explicit.
-- Hydropower generation depends on catchment inflow, reservoir dispatch, upstream plants, maintenance, grid curtailment, and tariffs—not rainfall alone.
-- Repeated quarterly observations for 508026 and precise catchment/geolocation mapping still need a coverage audit before modelling.
-
-Phase 1 is justified if that audit yields enough consistently defined, publication-dated observations. Phase 0 supports proceeding to that audit; it does not yet prove predictive power.
+- AKShare 依赖非官方上游网页，接口和字段可能变化；
+- PDF 可能是扫描件，阅读顺序和表格结构可能损坏；
+- 同名指标可能具有不同范围、税基、期间或单位；
+- 扩募和资产注入会破坏历史可比性；
+- 水电发电量同时受流域来水、水库与梯级调度、检修、弃水／限电和电价影响，不能只用单点降雨解释。

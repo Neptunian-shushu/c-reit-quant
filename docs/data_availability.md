@@ -1,118 +1,78 @@
-# Data availability audit
+# 数据可得性审计
 
-## 1. Market data — GREEN
+## 1. 市场数据：绿色
 
-### AKShare / Eastmoney
+AKShare 提供 C-REIT 专用接口：
 
-AKShare documents dedicated C-REIT endpoints:
+- `reits_realtime_em()`：全市场实时行情；
+- `reits_hist_em(symbol=...)`：单只 REIT 日线历史；
+- `reits_hist_min_em(...)`：分钟历史行情。
 
-- `reits_realtime_em()` — all REIT real-time quotes
-- `reits_hist_em(symbol=...)` — daily history for one REIT
-- `reits_hist_min_em(...)` — minute history
+日线通常包括开盘、最高、最低、收盘、成交量、成交额、振幅和换手率等字段，足以构建第一版市场因子面板。
 
-Daily output includes open/high/low/latest, volume, turnover value, amplitude and turnover rate.
+主要风险是这些接口封装了公开网页数据源，不是交易所正式数据服务。接口、限频和字段可能变化。研究中应缓存原始响应并记录抓取时间；若未来进入生产阶段，再评估持牌数据商。
 
-**Assessment:** enough to build a first market-factor panel without paid Wind/Choice access.
+## 2. REIT 名录和交易所元数据：绿色
 
-**Risk:** this is an unofficial wrapper around a public web data source. Endpoint stability, rate limits and field definitions should be monitored. For production-grade research, cache raw responses and consider a licensed vendor later.
+上交所和深交所均有公募 REIT 专区，公开项目状态、发行扩募和公告信息。可以用交易所信息维护证券主表，并与 AKShare 返回结果交叉核验。
 
-## 2. REIT universe and exchange metadata — GREEN
+## 3. 定期报告和公告：绿色／黄色
 
-Both SSE and SZSE maintain dedicated C-REIT portals. The exchanges expose product/project pages, market information, project status, issuance/expansion and disclosures.
+定期报告和运营公告真实存在，季度、半年和年度披露中包含财务指标及底层资产经营指标。瓶颈不是“有没有”，而是抽取和统一：
 
-**Assessment:** master security table can be built from exchange sources and cross-checked with AKShare.
+- PDF 或网页表格不是标准研究数据库；
+- 不同资产类型的指标完全不同；
+- 同一指标名称、单位和统计口径可能随报告期变化；
+- 扩募或注入新资产后，历史边界可能发生变化。
 
-## 3. Periodic reports and announcements — GREEN / AMBER
+因此该部分公开可得，但会逐步变成文档解析、数据治理和人工质检项目。
 
-SSE has dedicated REIT announcement and periodic-report pages. Its rules explicitly govern quarterly, semiannual and annual REIT disclosures. SZSE also has a dedicated REIT information platform with disclosure sections.
+## 4. 经营基本面：黄色，但可能构成研究壁垒
 
-The data exist, but the bottleneck is extraction:
+重点指标包括：
 
-- PDFs / HTML tables are not a normalized research database.
-- Fields vary by asset class.
-- Historical naming can change after expansion/new asset injection.
+- 产业园／仓储物流：出租率、租金、可出租与已出租面积、收缴率、租户集中度；
+- 高速公路：车流量、客货车拆分、通行费收入；
+- 新能源／水电：发电量、利用小时、结算电量、电价；
+- 消费基础设施：出租率、租金收入、租户销售额、客流量；
+- 全体 REIT：营业收入、NOI、可供分配金额和每份分派。
 
-**Assessment:** highly feasible, but this becomes a document-parsing/data-engineering project.
+数据存在性较好，一致性才是核心难点。不能因为某一份报告披露过某指标，就假定它能形成全市场通用因子；应先量化每项指标的历史覆盖率和口径稳定性。
 
-Recommended normalized long-format table:
+## 5. 天气：绿色
 
-| symbol | period_end | metric | value | unit | publication_date | source |
-|---|---|---|---:|---|---|---|
-| 508xxx | 2026-06-30 | occupancy | 0.942 | ratio | 2026-07-xx | PDF |
-| 508xxx | 2026-06-30 | distributable_amount | ... | RMB | ... | PDF |
+Open-Meteo 可以按经纬度获取降水、温度、风速等历史数据，且历史天气和历史预报使用不同接口。
 
-## 4. Operating fundamentals — AMBER, but probably the moat
+关键时点原则：再分析数据是利用事后信息重建的最佳天气估计，适合解释已实现经营结果；严格交易回测应使用决策时点真实可得的历史预报，并保存预测发布时间、有效时间和提前期。否则会产生前视偏差。
 
-Likely useful categories:
+## 6. 宏观、消费和物流总量：绿色／黄色
 
-### Industrial parks / logistics
-- occupancy
-- average rent
-- newly signed / renewed area
-- tenant concentration
-- lease expiry structure
-- property NOI
+国家统计局和行业主管部门公开月度或季度宏观、消费、物流及交通数据。它们适合作为控制变量和区域／行业状态变量，但频率、地域粒度、修订和发布日期需要单独管理，未必直接形成最强资产级信号。
 
-### Toll roads
-- traffic volume
-- toll revenue
-- passenger vs freight split when disclosed
+## 7. 道路交通：黄色
 
-### Renewable energy
-- generation (MWh/GWh)
-- utilization hours
-- curtailment / availability if disclosed
-- tariff / settlement information
+地图服务存在实时路况接口，但这不等于拥有每条收费公路的长期历史车流数据库。高速公路 MVP 应优先使用：
 
-### Retail / commercial property
-- occupancy
-- rental income
-- tenant sales / footfall if disclosed
-- WALE / tenant concentration
+1. REIT 定期报告披露的实际车流；
+2. 天气、节假日和区域宏观作为外部预测变量。
 
-**Assessment:** existence is relatively good, consistency is the hard problem. The repo should measure field coverage before assuming a universal factor exists.
+只有在该链路验证有效后，再投入成本获取更细的历史交通数据。
 
-## 5. Weather — GREEN
+## 8. 客流、移动定位和 POI：黄色／红色
 
-Open-Meteo provides location-based historical weather through an HTTP API, with variables including precipitation, wind speed, temperature, cloud cover and others. Its historical service uses ERA5 / ERA5-Land and other models.
+当前 POI 和地图接口相对容易获得，但历史商场客流和移动定位数据往往是专有或付费数据。抓取消费平台还会引入稳定性、授权和服务条款风险。
 
-Copernicus CDS also offers ERA5 hourly global reanalysis from 1940 onward, with API access.
+因此首个 MVP 不依赖专有客流数据，将其作为未来可选升级。
 
-**Critical research note:** reanalysis is reconstructed using information unavailable in real time. For a tradable nowcast backtest, use archived historical forecasts/model runs available at the decision timestamp. Reanalysis is fine for explanatory operating regressions.
+## 总结
 
-## 6. Macro / retail / logistics aggregates — GREEN / AMBER
+项目基于公开数据总体可行。最容易立即获得的组合是：
 
-NBS exposes monthly macro series such as retail sales, PMI and related statistics through the National Data portal.
+1. 全市场价格和成交量；
+2. 交易所公告和定期报告；
+3. 历史天气及历史预报；
+4. 全国和区域宏观总量。
 
-Sector ministries publish additional aggregates, but frequency/geographic granularity varies.
+真正可能形成壁垒的不是价格数据，而是：
 
-**Assessment:** useful for controls and regional/sector state variables; unlikely to be the strongest source of asset-level alpha by itself.
-
-## 7. Road traffic — AMBER
-
-Baidu Maps documents a Traffic API for current road/area congestion. This confirms programmatic road-state data exist, but it is not automatically a clean historical database of traffic volume on each toll-road asset.
-
-Best MVP sources for toll-road operations are therefore:
-1. REIT periodic disclosures (actual traffic), and
-2. weather + holidays + regional macro as external predictors.
-
-Only after this works should we invest in historical road-traffic acquisition.
-
-## 8. Footfall / mobility / POI — AMBER / RED for free historical data
-
-Current POI and routing/map APIs are accessible, but **historical** footfall/mobile-location data are often proprietary. Scraping consumer platforms also creates stability/licensing/ToS issues.
-
-**Recommendation:** do not make proprietary footfall necessary for MVP. Treat it as an optional later upgrade.
-
-## Bottom line
-
-The project is feasible with public data.
-
-The strongest immediately obtainable stack is:
-
-1. **full-universe price/volume**
-2. **exchange disclosure PDFs / announcements**
-3. **weather history / archived forecasts**
-4. **NBS and sector aggregate data**
-
-The likely proprietary moat is not access to prices. It is the normalized historical panel extracted from REIT operating disclosures and correctly joined to asset locations and external state variables.
+`经营披露解析器 + 标准化资产级基本面面板 + 底层资产地理信息 + 严格时点的另类数据连接`

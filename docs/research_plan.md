@@ -1,79 +1,69 @@
-# Research plan
+# 研究计划
 
-## Phase 0 — feasibility audit
+## Phase 0：数据可得性验证（已完成）
 
-Deliverables:
-- master universe table
-- daily market panel
-- report archive for a small representative sample
-- field-coverage report by REIT asset class
+已交付：
 
-Success criterion: >= 80% of the chosen pilot asset class has enough repeated operating observations for a panel test.
+- C-REIT 全市场实时行情／名录和单只日线接口；
+- 历史再分析天气与历史预报的独立客户端；
+- 定期报告 long-format 标准结构和候选指标提取框架；
+- 高速公路、水电、仓储物流三类正式报告样本；
+- 可行性运行脚本、离线测试和风险文档。
 
-## Phase 1 — baseline cross-sectional factors
+结论：公开数据总体可行；标准化经营基本面面板是主要瓶颈，也是潜在壁垒。
 
-Test monthly/weekly signals:
-- 1m / 3m / 6m momentum
-- short-horizon reversal
-- turnover / illiquidity
-- realized volatility
-- distribution yield
-- P/NAV
-- yield spread vs. government bonds
+## Phase 1：水电试点 508026（进行中）
 
-Controls:
-- asset type
-- exchange
-- listing age
-- liquidity
+第一轮已完成：
 
-Evaluation:
-- rank IC
-- top-minus-bottom portfolio return
-- long-only top-quintile return
-- turnover and capacity
-- asset-type-neutral portfolios
+- 2024Q2—2026Q1 连续 8 个季度经营指标；
+- 发电量、利用小时、结算电量、不含税结算电价四项核心字段；
+- 资产坐标、点位天气季度聚合和经营数据连接；
+- 连续性、缺失和最小样本量检查。
+- 一个不拟合参数、508026／现金切换的纯多头发电量同比事件回测。
+- 证券、资产、指标字典、来源文档、经营观测和分派记录的第一版关系审计。
 
-## Phase 2 — operating surprise model
+当前建模闸门：至少 12 个连续季度且核心字段完整。现有 8 个季度未达到门槛，因此暂不拟合 generation nowcast。
 
-Build expected operating metric from trailing history and seasonality.
+探索性事件策略已产生首个结果：按双向各万一佣金，策略略好于 508026 含分派买入持有并跑赢基准，但四个同比事件中仅两个方向正确。结果不足以证明“发电量同比符号可以形成稳定信号”，也不否定继续建设水文 nowcast 和横截面基本面数据库。
 
-Examples:
-- toll road: traffic surprise
-- renewable: generation surprise
-- park/logistics: occupancy/rent surprise
+下一步：
 
-Then test:
+1. 扩充全市场证券主表、资产主表和公告登记表；
+2. 继续向前补齐可比季度，并纳入以后新披露季度；
+3. 将候选抽取、人工核验值和后续修订值分层保存；
+4. 获取或构建五一桥坝址以上流域边界，以面雨量替代单点降雨；
+5. 调查来水量、上游梯级调度、检修和弃水／限电信息；
+6. 建立 publication-time 和 forecast-issue-time 数据版本；
+7. 样本达标后测试简单、可解释的发电量 nowcast。
 
-`operating surprise -> report-date abnormal return -> 1m/3m subsequent return`
+## Phase 2：基础市场与估值因子
 
-## Phase 3 — alternative-data nowcasting
+在全市场测试月频／周频信号：动量、短期反转、换手率、非流动性、已实现波动率、分派收益率、P/NAV 和相对国债利差。
 
-### Toll road pilot
-Features:
-- rainfall / snow / temperature extremes
-- holiday indicators
-- regional activity controls
+控制资产类型、交易所、上市时间和流动性，评价 rank IC、多空组合、纯多头组合、换手率、容量及资产类型中性结果。
 
-Target:
-- next-quarter traffic growth
+## Phase 3：经营超预期模型
 
-### Renewable pilot
-Features:
-- wind speed / solar radiation / precipitation
-- asset geolocation
+利用历史与季节性建立经营指标预期，例如：
 
-Target:
-- next-quarter generation growth
+- 高速公路：车流量超预期；
+- 新能源：发电量超预期；
+- 产业园／物流：出租率或租金超预期。
 
-## Phase 4 — tradable model
+随后检验：
 
-Only after forecast timestamp integrity is solved:
+`经营超预期 → 报告日异常收益 → 后续 1／3 个月收益`
 
-`public info at t -> predicted DPU / operating surprise -> expected return ranking`
+## Phase 4：可交易模型
 
-Key safeguards:
-- point-in-time report publication dates
-- no future-revised macro series without vintage control
-- historical forecasts rather than realized weather for true trading backtests
-- delisted/expanded-asset history retained
+只有在信息时点完整后，才研究：
+
+`t 时点公开信息 → 预测 DPU／经营超预期 → 预期收益排序`
+
+必要保护措施：
+
+- 使用报告真实发布日期；
+- 不使用缺少 vintage 控制的未来修订宏观数据；
+- 严格回测使用历史时点真实可得的天气预报，而非事后再分析天气；
+- 保留退市、扩募和资产边界变化历史。

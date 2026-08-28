@@ -1,0 +1,2 @@
+symbol,asset_id,asset_name,asset_type,latitude,longitude,coordinate_precision,installed_capacity_mw,location,coordinate_source_url,asset_source_url,weather_mapping_note
+508026,wuyiqiao_1_5,五一桥水电站1-5号机组,hydropower,28.7125,101.6762,exact_public_tracker,137.0,四川省甘孜藏族自治州九龙县,https://www.gem.wiki/Wuyiqiao_hydroelectric_plant,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508026_20250328_T61T.pdf,当前仅使用电站点位；正式水文模型需要补充坝址以上1641.7平方公里流域边界和上游梯级电站
