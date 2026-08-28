@@ -1,0 +1,37 @@
+market:
+  akshare_realtime:
+    status: validated_documentation
+    function: reits_realtime_em
+    source: Eastmoney via AKShare
+  akshare_daily:
+    status: validated_documentation
+    function: reits_hist_em
+    source: Eastmoney via AKShare
+  akshare_intraday:
+    status: validated_documentation
+    function: reits_hist_min_em
+    source: Eastmoney via AKShare
+
+exchange_disclosures:
+  sse:
+    status: validated_portal
+    scope: [universe, market, announcements, periodic_reports, issuance, expansion]
+  szse:
+    status: validated_portal
+    scope: [universe, market, announcements, periodic_reports, project_updates]
+
+alternative_data:
+  open_meteo:
+    status: validated_api
+    scope: [historical_weather, forecast_weather]
+  era5:
+    status: validated_api
+    scope: [historical_weather_reanalysis]
+    warning: "Use historical forecasts, not reanalysis, for strict tradable backtests."
+  baidu_traffic:
+    status: validated_api_exists
+    scope: [current_traffic_conditions]
+    auth: api_key_required
+  nbs:
+    status: validated_portal
+    scope: [retail_sales, pmi, industrial, macro]

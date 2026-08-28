@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "creit-quant"
+version = "0.1.0"
+description = "China public REIT systematic research scaffold"
+requires-python = ">=3.10"
+dependencies = [
+  "akshare>=1.16",
+  "pandas>=2.0",
+  "requests>=2.31",
+  "pyyaml>=6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
