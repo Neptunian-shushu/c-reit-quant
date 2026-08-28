@@ -1,0 +1,12 @@
+symbol,asset_id,period_end,metric,value,unit,raw_value,raw_unit,publication_date,source_url,source_note
+508018,fund_portfolio,2024-12-31,traffic_volume,24331,vehicles_per_day,24331,vehicles/day,2025-03-29,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf,2024年年度报告第12页
+508018,fund_portfolio,2024-12-31,passenger_vehicle_traffic,13746,vehicles_per_day,13746,vehicles/day,2025-03-29,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf,2024年年度报告第12页
+508018,fund_portfolio,2024-12-31,freight_vehicle_traffic,10585,vehicles_per_day,10585,vehicles/day,2025-03-29,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf,2024年年度报告第12页
+508018,fund_portfolio,2024-12-31,toll_revenue,432139777.36,RMB,432139777.36,RMB incl. VAT,2025-03-29,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf,含税通行费收入；保留税基备注
+508026,wuyiqiao_1_5,2024-12-31,power_generation,50312.1216,10k_kWh,50312.1216,10k kWh,2025-03-28,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508026_20250328_T61T.pdf,2024年年度报告第14至15页
+508026,wuyiqiao_1_5,2024-12-31,utilization_hours,3672,hours,3672,hours,2025-03-28,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508026_20250328_T61T.pdf,原披露名称为有效发电小时
+508056,fund_portfolio,2024-12-31,occupancy,86.37,percent,86.37,percent,2025-03-28,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf,2024年年度报告第15页
+508056,fund_portfolio,2024-12-31,rentable_area,1163212.20,square_metres,1163212.20,square metres,2025-03-28,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf,2024年年度报告第15页
+508056,fund_portfolio,2024-12-31,leased_area,1004658.37,square_metres,1004658.37,square metres,2025-03-28,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf,2024年年度报告第15页
+508056,fund_portfolio,2024-12-31,average_rent,35.74,RMB_per_square_metre_month,35.74,RMB/square metre/month excl. tax,2025-03-28,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf,合同租金加物业管理费；不含税
+508056,fund_portfolio,2024-12-31,rent_collection_rate,99.70,percent,99.70,percent,2025-03-28,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf,2024年年度报告第15页

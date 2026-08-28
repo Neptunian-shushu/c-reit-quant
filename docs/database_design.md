@@ -13,6 +13,7 @@
 | `metric_definitions` | `data/reference/metric_definitions.csv` | 跨资产类型的规范指标名、单位和频率 |
 | `asset_type_metric_requirements` | `data/reference/asset_type_metric_requirements.csv` | 各资产类型的核心与可选指标要求 |
 | `source_documents` | `data/samples/508026_source_documents.csv` | 公告类型、报告期、发布日期、URL 和核验状态 |
+| `announcement_catalog` | `data/snapshots/reit_announcement_catalog.csv` | 沪深交易所官方公告元数据和规则分类候选，不等同于已核验来源 |
 | `operating_metrics` | `data/samples/508026_quarterly_operating_metrics.csv` | long-format 经营观测及其发布时间、来源和原口径备注 |
 | `distributions` | `data/samples/508026_distributions.csv` | 除息日、每份分派和公告来源 |
 
@@ -28,6 +29,8 @@
 - 按任意历史日期恢复当时可见的 point-in-time 快照。
 
 当前 508026 审计结果为 1 只证券、1 项底层资产、19 项规范指标、32 条经营观测、10 份来源文档和 2 条现金分派；10 份文档都已人工核验。
+
+全市场观察层已保存 2026-08-28 快照，共 94 只证券。该快照来自 AKShare／东方财富行情源，只表示该日被数据源观察到，不能直接提供真实上市日期或历史退市状态。当前人工核验覆盖层有 9 只，待复核分类仍单独保留。沪深官方公告目录共 8,151 条，已经覆盖全部 94 只证券，并发现覆盖 81 只的 1,131 条定期报告候选。候选目录不会自动升级为正式来源登记。数据库还把 Phase 0 的高速公路、水电和仓储物流样本迁移为 11 条规范观测，核心覆盖为 6/8；缺失值没有估算填补。最新状态见 [数据库当前状态](database_status.md)。
 
 ## 数据库完善优先级
 
@@ -45,6 +48,10 @@
 - 解析器版本和人工核验人／时间。
 
 仓库不提交大型 PDF，但应保存官方 URL、哈希和结构化提取证据，保证数据可复核。
+
+当前公告发现层已经同时接入上交所基金公告接口和深交所 REIT 信息披露接口。目录记录一律标记为 `unreviewed`；分类规则会排除摘要、审计／评估报告、提示性公告和更正公告，并把更正稿单独标记。人工确认报告身份和口径后，才可写入 `source_documents`。
+
+当前 13 份已登记来源文档已经记录抓取时间、SHA-256、内容类型、字节数和抓取状态。更正关系字段已经实现并具备校验，但 508026 早期被更正的原始报告尚未找到，因此不能伪造一条父版本关系。
 
 ### 3. 分开原始候选、核验值和修订值
 

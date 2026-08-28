@@ -2,7 +2,11 @@
 
 import argparse
 
-from creit_quant.database import audit_default_pilot_database, export_default_pilot_database
+from creit_quant.database import (
+    audit_cross_asset_seed_database,
+    audit_default_pilot_database,
+    export_default_pilot_database,
+)
 
 
 def main() -> None:
@@ -32,6 +36,14 @@ def main() -> None:
         f"人工核验 {audit['verified_documents']} 份"
     )
     print(f"现金分派: {audit['distributions']} 条")
+    cross = audit_cross_asset_seed_database()
+    print("\n跨资产数据库种子审计通过")
+    print(f"证券 / 资产: {cross['securities']} / {cross['assets']}")
+    print(f"经营观测 / 来源公告: {cross['operating_observations']} / {cross['source_documents']}")
+    print(
+        f"核心指标覆盖: {cross['available_cells']} / {cross['coverage_cells']} "
+        f"({cross['coverage_pct']:.1f}%)"
+    )
     if args.as_of and not args.out_dir:
         parser.error("--as-of 必须与 --out-dir 一起使用")
     if args.out_dir:

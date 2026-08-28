@@ -46,7 +46,25 @@
 
 粒度：每份正式公告或报告一行。主键：`document_id`，`source_url` 也必须唯一。
 
-当前记录证券、文档类型、报告期、发布日期、URL 和核验状态。下一步增加抓取时间、文件哈希、更正关系、解析器版本和人工复核信息。
+当前记录证券、文档类型、报告期、发布日期、URL、核验状态、抓取时间、SHA-256、内容类型、字节数、抓取状态、解析器版本和更正关系。`supersedes_document_id` 只能指向同一证券更早发布的已登记公告。仓库不保存大型 PDF。
+
+### `universe_history`
+
+粒度：每个快照日每只被行情源观察到的证券一行。主键：`snapshot_date + symbol`。
+
+`first_observed_date` 仅表示数据库第一次看到该证券，绝不能改名为或替代 `listing_date`。同日重复抓取内容相同则幂等；内容冲突会报错，禁止静默覆盖。
+
+### `security_overrides`
+
+粒度：每只已通过一手来源人工核验的证券一行。主键：`symbol`。
+
+行情简称和关键词分类只是候选。只有覆盖层中的 `human_verified` 记录才能升级正式名称和资产类型，并必须保存一手来源 URL。
+
+### `announcement_catalog`
+
+粒度：每份交易所公告元数据一行。主键：`announcement_id`，`source_url` 也必须唯一。
+
+`document_type_candidate` 和 `period_end_candidate` 是规则分类结果，`catalog_status=unreviewed` 表示尚未人工确认。该表只负责“发现”，不能直接作为经营观测的正式证据。沪深目录采用相同字段，保留交易所、原标题、发布日期和官方文件 URL；同一公告 ID 内容变化时拒绝静默覆盖。
 
 ### `operating_metrics`
 

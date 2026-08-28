@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from creit_quant.database import (
+    audit_cross_asset_seed_database,
     audit_default_pilot_database,
     audit_research_database,
     build_asset_type_coverage,
@@ -21,7 +22,7 @@ from creit_quant.strategy import load_distributions
 def test_default_pilot_database_has_complete_relations():
     audit = audit_default_pilot_database()
 
-    assert audit["securities"] == 1
+    assert audit["securities"] == 3
     assert audit["assets"] == 1
     assert audit["operating_observations"] == 32
     assert audit["source_documents"] == 10
@@ -32,6 +33,18 @@ def test_default_pilot_database_has_complete_relations():
     assert audit["coverage_pct"] == 100.0
     assert audit["observation_versions"] == 32
     assert audit["revised_observations"] == 0
+
+
+def test_cross_asset_seed_preserves_real_missing_coverage():
+    audit = audit_cross_asset_seed_database()
+
+    assert audit["securities"] == 3
+    assert audit["assets"] == 3
+    assert audit["operating_observations"] == 11
+    assert audit["source_documents"] == 3
+    assert audit["coverage_cells"] == 8
+    assert audit["available_cells"] == 6
+    assert audit["coverage_pct"] == 75.0
 
 
 def test_metric_coverage_marks_missing_cells():
@@ -138,3 +151,45 @@ def test_database_audit_rejects_mismatched_document_period():
             load_source_documents(),
             load_metric_definitions(),
         )
+
+
+def test_source_document_lineage_accepts_later_correction(tmp_path):
+    documents = pd.DataFrame(
+        {
+            "document_id": ["original", "corrected"],
+            "symbol": ["508026", "508026"],
+            "document_type": ["quarterly_report", "quarterly_report_corrected"],
+            "period_end": ["2025-06-30", "2025-06-30"],
+            "publication_date": ["2025-07-20", "2025-08-01"],
+            "source_url": ["https://example.test/original", "https://example.test/corrected"],
+            "verification_status": ["human_verified", "human_verified"],
+            "supersedes_document_id": [pd.NA, "original"],
+            "content_sha256": ["a" * 64, "b" * 64],
+        }
+    )
+    path = tmp_path / "documents.csv"
+    documents.to_csv(path, index=False)
+
+    loaded = load_source_documents(path)
+
+    assert loaded.loc[1, "supersedes_document_id"] == "original"
+
+
+def test_source_document_lineage_rejects_unknown_parent(tmp_path):
+    documents = pd.DataFrame(
+        {
+            "document_id": ["corrected"],
+            "symbol": ["508026"],
+            "document_type": ["quarterly_report_corrected"],
+            "period_end": ["2025-06-30"],
+            "publication_date": ["2025-08-01"],
+            "source_url": ["https://example.test/corrected"],
+            "verification_status": ["human_verified"],
+            "supersedes_document_id": ["missing"],
+        }
+    )
+    path = tmp_path / "documents.csv"
+    documents.to_csv(path, index=False)
+
+    with pytest.raises(ValueError, match="未登记 document_id"):
+        load_source_documents(path)

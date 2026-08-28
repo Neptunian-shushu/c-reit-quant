@@ -1,0 +1,4 @@
+symbol,asset_id,asset_name,asset_type,aggregation_scope,source_url,notes
+508018,fund_portfolio,收费公路资产组合,toll_road,fund_portfolio,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf,Phase 0 年报披露的基金资产组合口径；不虚构单一路段归属
+508026,wuyiqiao_1_5,五一桥水电站1-5号机组,hydropower,asset,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508026_20250328_T61T.pdf,明确资产级披露
+508056,fund_portfolio,仓储物流资产组合,logistics,fund_portfolio,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf,Phase 0 年报披露的基金资产组合口径；不拆分到未核验单体项目

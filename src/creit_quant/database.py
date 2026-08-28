@@ -19,6 +19,9 @@ DEFAULT_MASTER_PATH = ROOT / "data" / "samples" / "reit_master.csv"
 DEFAULT_DOCUMENTS_PATH = ROOT / "data" / "samples" / "508026_source_documents.csv"
 DEFAULT_DEFINITIONS_PATH = ROOT / "data" / "reference" / "metric_definitions.csv"
 DEFAULT_REQUIREMENTS_PATH = ROOT / "data" / "reference" / "asset_type_metric_requirements.csv"
+DEFAULT_CROSS_ASSETS_PATH = ROOT / "data" / "samples" / "cross_asset_asset_master.csv"
+DEFAULT_CROSS_METRICS_PATH = ROOT / "data" / "samples" / "cross_asset_operating_metrics.csv"
+DEFAULT_CROSS_DOCUMENTS_PATH = ROOT / "data" / "samples" / "cross_asset_source_documents.csv"
 
 OBSERVATION_KEY = ["symbol", "asset_id", "period_end", "metric"]
 
@@ -67,6 +70,29 @@ def load_source_documents(path: str | Path = DEFAULT_DOCUMENTS_PATH) -> pd.DataF
     frame["publication_date"] = pd.to_datetime(frame["publication_date"], errors="raise")
     if (frame["publication_date"] < frame["period_end"]).any():
         raise ValueError("公告发布日期不能早于对应报告期末")
+    if "retrieved_at" in frame:
+        frame["retrieved_at"] = pd.to_datetime(frame["retrieved_at"], errors="raise")
+    if "content_sha256" in frame:
+        hashes = frame["content_sha256"].dropna().astype(str)
+        hashes = hashes.loc[hashes.ne("")]
+        if not hashes.str.fullmatch(r"[0-9a-f]{64}").all():
+            raise ValueError("content_sha256 必须是 64 位小写十六进制")
+    if "supersedes_document_id" in frame:
+        parents = frame["supersedes_document_id"].dropna().astype(str)
+        parents = parents.loc[parents.ne("")]
+        if not set(parents).issubset(set(frame["document_id"])):
+            raise ValueError("公告更正关系指向未登记 document_id")
+        lookup = frame.set_index("document_id")
+        linked = frame.loc[frame["supersedes_document_id"].notna()]
+        for row in linked.itertuples(index=False):
+            parent_id = str(row.supersedes_document_id)
+            if not parent_id:
+                continue
+            parent = lookup.loc[parent_id]
+            if row.document_id == parent_id or row.symbol != parent["symbol"]:
+                raise ValueError("公告不能替代自身或其他证券的公告")
+            if row.publication_date <= parent["publication_date"]:
+                raise ValueError("更正公告发布日期必须晚于被替代公告")
     return frame
 
 
@@ -99,6 +125,46 @@ def load_asset_metric_requirements(
     if not set(frame["requirement_level"]).issubset(allowed_levels):
         raise ValueError("requirement_level 只能是 core 或 optional")
     return frame
+
+
+def load_assets(path: str | Path) -> pd.DataFrame:
+    """读取通用底层资产表并校验证券内资产标识唯一。"""
+
+    frame = _read_table(
+        path,
+        {"symbol", "asset_id", "asset_name", "asset_type", "source_url"},
+        name="底层资产表",
+    )
+    if frame.duplicated(["symbol", "asset_id"]).any():
+        raise ValueError("底层资产表 symbol/asset_id 必须唯一")
+    return frame
+
+
+def load_operating_metrics(path: str | Path) -> pd.DataFrame:
+    """读取不限定资产类型的规范 long-format 经营观测。"""
+
+    frame = _read_table(
+        path,
+        {
+            "symbol",
+            "asset_id",
+            "period_end",
+            "metric",
+            "value",
+            "unit",
+            "publication_date",
+            "source_url",
+        },
+        name="经营观测表",
+    )
+    frame["period_end"] = pd.to_datetime(frame["period_end"], errors="raise")
+    frame["publication_date"] = pd.to_datetime(frame["publication_date"], errors="raise")
+    frame["value"] = pd.to_numeric(frame["value"], errors="raise")
+    if frame.duplicated(OBSERVATION_KEY + ["publication_date"]).any():
+        raise ValueError("同一经营指标版本重复")
+    if frame[["symbol", "asset_id", "metric", "unit", "source_url"]].isna().any().any():
+        raise ValueError("经营观测关键字段不能为空")
+    return frame.sort_values(OBSERVATION_KEY + ["publication_date"]).reset_index(drop=True)
 
 
 def build_metric_coverage(
@@ -217,8 +283,10 @@ def build_observation_versions(
     versions["valid_from"] = pd.to_datetime(versions["publication_date"], errors="raise")
     versions["valid_to"] = grouped["valid_from"].shift(-1)
     versions["supersedes_observation_id"] = grouped["observation_id"].shift(1)
-    versions["raw_value"] = versions["value"]
-    versions["raw_unit"] = versions["unit"]
+    if "raw_value" not in versions:
+        versions["raw_value"] = versions["value"]
+    if "raw_unit" not in versions:
+        versions["raw_unit"] = versions["unit"]
     versions["quality_status"] = versions["verification_status"].map(
         {"human_verified": "verified"}
     ).fillna("unverified")
@@ -409,3 +477,21 @@ def export_default_pilot_database(
         paths["point_in_time_snapshot"] = output / "operating_observations_as_of.csv"
         snapshot.to_csv(paths["point_in_time_snapshot"], index=False)
     return paths
+
+
+def audit_cross_asset_seed_database() -> dict[str, object]:
+    """审计 Phase 0 三类资产已核验样本迁移后的规范数据库种子。"""
+
+    empty_distributions = pd.DataFrame(
+        columns=["symbol", "ex_date", "cash_per_unit", "announcement_date", "source_url"]
+    )
+    empty_distributions["ex_date"] = pd.to_datetime(empty_distributions["ex_date"])
+    return audit_research_database(
+        load_reit_master(DEFAULT_MASTER_PATH),
+        load_assets(DEFAULT_CROSS_ASSETS_PATH),
+        load_operating_metrics(DEFAULT_CROSS_METRICS_PATH),
+        empty_distributions,
+        load_source_documents(DEFAULT_CROSS_DOCUMENTS_PATH),
+        load_metric_definitions(DEFAULT_DEFINITIONS_PATH),
+        load_asset_metric_requirements(DEFAULT_REQUIREMENTS_PATH),
+    )

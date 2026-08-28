@@ -12,7 +12,7 @@
 
 **探索性策略已经得到首个结果。** 策略严格保持纯多头：发电量同比为正时持有 508026，否则持有现金；932047 只作为业绩基准。按 10 万元本金、买卖双向各万一佣金、每笔最低 5 元、现金年化收益 1.5% 计算，2025-07-22 至 2026-08-27 策略收益约 **-5.36%**；同期 508026 含分派且扣除买入佣金为 **-6.42%**，932047 全收益基准为 **-12.35%**。策略略好于买入持有并显著好于基准，但只有 4 个事件，仍不能视为 alpha 证据。详见 [初步策略结果](docs/phase1_strategy_results.md)。
 
-**研究数据库已建立第一版关系层。** 当前把证券、底层资产、指标定义、资产类型要求、公告来源、经营观测和现金分派拆成独立表，并能离线检查主外键、规范单位、公告时点和来源覆盖。经营观测可构建为带生效区间与修订链的 point-in-time 版本，并按指定历史日期生成当时可见快照。508026 现有 32 条经营观测都能追溯到已人工核验的来源文档。设计与扩展顺序见 [研究数据库设计](docs/database_design.md)，字段约定见 [数据字典](docs/data_dictionary.md)。
+**研究数据库已进入主线建设。** 2026-08-28 的 AKShare／东方财富快照观察到 94 只 C-REIT，其中 9 只证券名称和资产类型已有一手来源人工核验，其他规则分类明确保留为待复核候选。沪深交易所官方公告目录已收录 8,151 条元数据，覆盖 94／94 只证券；其中 1,131 条定期报告候选覆盖 81 只，仍须人工复核后才能进入正式来源登记表。当前 508026 有 32 条连续季度经营观测；高速公路、水电和仓储物流三类数据库种子另有 11 条已核验观测。13 份正式登记来源文档均已计算 SHA-256，未提交原始 PDF。经营观测支持修订链和历史时点快照。详见 [数据库当前状态](docs/database_status.md)、[研究数据库设计](docs/database_design.md)和[数据字典](docs/data_dictionary.md)。
 
 ## 核心研究问题
 
@@ -68,6 +68,27 @@ python -m creit_quant.phase1
 # Phase 1 研究数据库关系与来源审计
 python -m creit_quant.phase1_database
 
+# 联网追加当日全市场 universe 快照
+python -m creit_quant.phase1_universe
+
+# 上游不可用时，从已保存快照离线重建待复核主表
+python -m creit_quant.phase1_universe \
+  --offline \
+  --master-out data/processed/security_master_review.csv
+
+# 联网更新沪深交易所官方公告候选目录；失败时不会伪造记录
+python -m creit_quant.phase1_announcements
+
+# 不联网，按最新分类规则重算已有公告目录
+python -m creit_quant.phase1_announcements --offline
+
+# 生成全市场公告覆盖和数据库质量队列
+python -m creit_quant.phase1_quality \
+  --out-dir data/processed/phase1_quality
+
+# 仅补抓缺少哈希的公告；不保存 PDF
+python -m creit_quant.phase1_documents --write
+
 # 导出规范版本表、核心指标覆盖表和 2025-07-31 历史快照
 python -m creit_quant.phase1_database \
   --out-dir data/processed/phase1_database \
@@ -98,16 +119,24 @@ c-reit-quant/
 ├── data/
 │   ├── reference/
 │   │   ├── asset_type_metric_requirements.csv
-│   │   └── metric_definitions.csv
+│   │   ├── metric_definitions.csv
+│   │   └── security_overrides.csv
+│   ├── snapshots/
+│   │   ├── reit_announcement_catalog.csv
+│   │   └── reit_universe_history.csv
 │   └── samples/
 │       ├── phase0_operating_metrics.csv
 │       ├── reit_master.csv
 │       ├── 508026_asset_metadata.csv
 │       ├── 508026_distributions.csv
 │       ├── 508026_quarterly_operating_metrics.csv
-│       └── 508026_source_documents.csv
+│       ├── 508026_source_documents.csv
+│       ├── cross_asset_asset_master.csv
+│       ├── cross_asset_operating_metrics.csv
+│       └── cross_asset_source_documents.csv
 ├── docs/
 │   ├── database_design.md
+│   ├── database_status.md
 │   ├── data_dictionary.md
 │   ├── data_availability.md
 │   ├── phase0_findings.md
@@ -117,16 +146,28 @@ c-reit-quant/
 ├── scripts/
 │   ├── run_phase0.py
 │   ├── run_phase1.py
+│   ├── run_phase1_announcements.py
 │   ├── run_phase1_database.py
-│   └── run_phase1_strategy.py
+│   ├── run_phase1_documents.py
+│   ├── run_phase1_quality.py
+│   ├── run_phase1_strategy.py
+│   └── run_phase1_universe.py
 ├── src/creit_quant/
 │   ├── database.py
+│   ├── announcements.py
+│   ├── documents.py
 │   ├── hydropower.py
 │   ├── market.py
+│   ├── master_data.py
 │   ├── phase0.py
 │   ├── phase1.py
+│   ├── phase1_announcements.py
 │   ├── phase1_database.py
+│   ├── phase1_documents.py
+│   ├── phase1_quality.py
 │   ├── phase1_strategy.py
+│   ├── phase1_universe.py
+│   ├── quality.py
 │   ├── report_parser.py
 │   ├── schema.py
 │   ├── strategy.py
@@ -148,6 +189,8 @@ c-reit-quant/
 ## 已知限制
 
 - AKShare 的 REIT 接口依赖非官方上游网页，字段和可用性可能变化。
+- 当前全市场只有一个快照日，`first_observed_date` 不能当作上市日期；历史状态需持续追加快照。
+- 全市场 94 只中仍有 85 只资产类型待人工核验；虽然 81 只已发现定期报告候选，但目前只有 3 只完成正式来源登记和指标抽取。
 - 当前报告解析器只是关键词／正则候选提取框架，并未解决 PDF 版面、表格重建、OCR、单位统一和人工复核。
 - Phase 0 样本证明经营数据存在，并不等于已有完整全市场历史面板。
 - 508026 目前只有 8 个连续季度，尚不足以支持可靠的季度预测模型。
