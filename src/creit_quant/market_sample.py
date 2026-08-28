@@ -3,15 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import akshare as ak
-
-
-def fetch_reit_history(symbol: str):
-    """Fetch daily C-REIT history using AKShare's documented Eastmoney endpoint."""
-    df = ak.reits_hist_em(symbol=symbol)
-    if df.empty:
-        raise RuntimeError(f"No data returned for {symbol}")
-    return df
+from creit_quant.market import fetch_reit_history
 
 
 def main() -> None:

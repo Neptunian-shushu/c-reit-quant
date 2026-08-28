@@ -1,0 +1,12 @@
+symbol,period_end,asset_type,metric,value,unit,source_url_or_note
+508018,2024-12-31,toll_road,traffic_volume,24331,vehicles/day,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf (2024 annual report p.12)
+508018,2024-12-31,toll_road,passenger_vehicle_traffic,13746,vehicles/day,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf (2024 annual report p.12)
+508018,2024-12-31,toll_road,freight_vehicle_traffic,10585,vehicles/day,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf (2024 annual report p.12)
+508018,2024-12-31,toll_road,toll_revenue,432139777.36,RMB incl. VAT,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-29/508018_20250329_2AXB.pdf (2024 annual report p.12)
+508026,2024-12-31,hydropower,power_generation,50312.1216,10k kWh,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508026_20250328_T61T.pdf (2024 annual report p.14-15)
+508026,2024-12-31,hydropower,utilization_hours,3672,hours,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508026_20250328_T61T.pdf (reported as effective generation hours; p.14-15)
+508056,2024-12-31,logistics,occupancy,86.37,percent,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf (2024 annual report p.15)
+508056,2024-12-31,logistics,rentable_area,1163212.20,square metres,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf (2024 annual report p.15)
+508056,2024-12-31,logistics,leased_area,1004658.37,square metres,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf (2024 annual report p.15)
+508056,2024-12-31,logistics,average_rent,35.74,RMB/square metre/month excl. tax,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf (contract rent plus property management fee; p.15)
+508056,2024-12-31,logistics,rent_collection_rate,99.70,percent,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-03-28/508056_20250328_6KQ4.pdf (2024 annual report p.15)

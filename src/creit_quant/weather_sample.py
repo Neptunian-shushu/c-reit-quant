@@ -2,29 +2,13 @@ from __future__ import annotations
 
 import argparse
 
-import pandas as pd
-import requests
-
-ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
+from creit_quant.weather import fetch_historical_weather
 
 
-def fetch_weather(lat: float, lon: float, start: str, end: str) -> pd.DataFrame:
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "start_date": start,
-        "end_date": end,
-        "daily": [
-            "temperature_2m_mean",
-            "precipitation_sum",
-            "wind_speed_10m_max",
-        ],
-        "timezone": "Asia/Shanghai",
-    }
-    r = requests.get(ARCHIVE_URL, params=params, timeout=30)
-    r.raise_for_status()
-    payload = r.json()
-    return pd.DataFrame(payload["daily"])
+def fetch_weather(lat: float, lon: float, start: str, end: str):
+    """Backward-compatible wrapper around the Phase 0 weather client."""
+
+    return fetch_historical_weather(lat, lon, start, end)
 
 
 def main() -> None:

@@ -23,7 +23,11 @@ exchange_disclosures:
 alternative_data:
   open_meteo:
     status: validated_api
-    scope: [historical_weather, forecast_weather]
+    scope: [historical_weather_reanalysis, archived_historical_forecast]
+    endpoints:
+      reanalysis: https://archive-api.open-meteo.com/v1/archive
+      historical_forecast: https://historical-forecast-api.open-meteo.com/v1/forecast
+    warning: "The stitched historical forecast is not a fixed-lead forecast vintage. Use archived runs for strict point-in-time tests."
   era5:
     status: validated_api
     scope: [historical_weather_reanalysis]

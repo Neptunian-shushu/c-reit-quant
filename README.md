@@ -1,6 +1,18 @@
 # C-REIT Quant Research
 
-A research scaffold for testing whether China public REITs (C-REITs) support systematic cross-sectional strategies built from market data, disclosed operating fundamentals, and alternative data.
+A feasibility-first research project for testing whether China public REITs (C-REITs) support systematic research built from market data, disclosed asset operations, and alternative data.
+
+## Phase 0 status
+
+**Phase 0 — data availability validation is implemented.** The current conclusion is that a public-data project is feasible, but the valuable and difficult component is a standardised historical operating-fundamental panel rather than price collection.
+
+Phase 0 now provides:
+
+- AKShare current universe/quote and daily-history access with normalised fields and explicit failure handling;
+- separate Open-Meteo clients for ex-post historical/reanalysis weather and archived historical forecasts;
+- a long-format operating-metric schema and regex/keyword candidate extractor;
+- a small source-linked sample verified from official annual reports across toll road, hydropower, and logistics assets;
+- a command-line feasibility check and offline unit tests.
 
 ## Research questions
 
@@ -16,7 +28,7 @@ A research scaffold for testing whether China public REITs (C-REITs) support sys
 - **Alternative data:** weather, holidays, logistics, retail activity, regional macro.
 - **Event studies:** earnings/quarterly reports, expansion (扩募), extreme weather, holidays.
 
-## Data availability: preliminary verdict
+## Data availability verdict
 
 | Dataset | Availability | Automation | Notes |
 |---|---|---:|---|
@@ -27,8 +39,8 @@ A research scaffold for testing whether China public REITs (C-REITs) support sys
 | DPU / distributable amount | Good | Medium | In periodic reports and distribution announcements; standardization needed |
 | NAV / appraised value | Medium-Good | Medium | Periodic reports / valuation disclosures; not always a clean single API |
 | Asset-level occupancy / rent / traffic / generation | Medium-Good | Medium-Low | Often disclosed, but asset-type-specific and PDF/table extraction is needed |
-| Historical weather | Excellent | High | Open-Meteo / ERA5; location-based hourly history |
-| Weather forecasts | Excellent | High | Useful for genuine nowcast tests if timestamps are handled correctly |
+| Historical weather | Excellent | High | Open-Meteo reanalysis; suitable for ex-post explanation |
+| Archived forecasts | Good | High | Separate API; issue time and forecast lead must still be controlled |
 | National / regional macro | Good | Medium-High | NBS and sector ministries; frequency varies |
 | Express / logistics aggregates | Good | Medium | State Post Bureau / MOT, mostly aggregate rather than property-level |
 | Real-time road congestion | Medium | Medium | Baidu Traffic API exists; requires API key and is mainly current-state |
@@ -37,38 +49,20 @@ A research scaffold for testing whether China public REITs (C-REITs) support sys
 | POI / map features | Medium | Medium | Mapping APIs available; historical snapshots are the hard part |
 | Mobile-location / proprietary footfall | Weak (free) | Low | Likely paid/proprietary; not required for MVP |
 
-See [`docs/data_availability.md`](docs/data_availability.md) for details and validation plan.
+See [`docs/phase0_findings.md`](docs/phase0_findings.md) for the completed audit and [`docs/data_availability.md`](docs/data_availability.md) for the broader source inventory.
 
-## MVP recommendation
+## Next phase: Phase 1 — Hydropower Pilot
 
-Start with two parallel tracks:
+The preferred first pilot is **508026**, provided its repeated public disclosures pass a fuller coverage audit.
 
-### Track A — cross-sectional market/fundamental baseline
+Phase 1 will:
 
-Universe: all listed C-REITs.
+1. build a historical quarterly operating dataset for the hydropower REIT;
+2. map the underlying asset/catchment to weather locations;
+3. join generation and utilisation hours to rainfall/weather features;
+4. test a simple generation nowcast model.
 
-Build factors from:
-- return / momentum / reversal
-- turnover / liquidity
-- realized volatility
-- distribution yield
-- P/NAV where available
-- yield spread vs. government bonds
-- asset category
-
-Goal: establish whether basic cross-sectional structure is measurable before adding alternative data.
-
-### Track B — asset-type nowcast pilot
-
-Start with **toll-road REITs** or **renewable-energy REITs**.
-
-Toll road example:
-
-`weather + holidays + regional activity -> traffic -> revenue -> DPU -> price reaction`
-
-Renewable example:
-
-`wind / irradiance / rainfall -> generation -> revenue -> DPU -> price reaction`
+This is a data and timestamp-integrity pilot before any trading model.
 
 ## Quick start
 
@@ -77,8 +71,12 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-python -m creit_quant.market_sample --symbol 508097
-python -m creit_quant.weather_sample --lat 31.23 --lon 121.47 --start 2025-01-01 --end 2025-01-10
+python -m creit_quant.phase0
+python -m creit_quant.phase0 --history-symbol 508026
+
+# Optional offline tests
+pip install -e '.[dev]'
+pytest
 ```
 
 ## Repository structure
@@ -89,16 +87,20 @@ c-reit-quant/
 │   └── data_sources.yaml
 ├── docs/
 │   ├── data_availability.md
+│   ├── phase0_findings.md
 │   └── research_plan.md
-├── notebooks/
 ├── src/creit_quant/
-│   ├── market_sample.py
-│   ├── weather_sample.py
+│   ├── market.py
+│   ├── weather.py
+│   ├── report_parser.py
+│   ├── phase0.py
 │   └── schema.py
-├── tests/
 ├── data/
 │   ├── raw/
-│   └── processed/
+│   ├── processed/
+│   └── samples/
+├── scripts/
+├── tests/
 ├── pyproject.toml
 └── README.md
 ```
@@ -112,6 +114,9 @@ For alternative-data research, avoid look-ahead bias. Distinguish:
 
 Reanalysis is appropriate for explaining realized operations. A tradable nowcast should use information that was actually available at the time.
 
-## Status
+## Known limitations
 
-This is a feasibility-first scaffold. The immediate next task is to build a normalized REIT master table and download 2–3 years of daily bars for the full universe, then parse a small sample of quarterly reports to measure field coverage.
+- AKShare's REIT endpoints wrap an unofficial Eastmoney source; availability and fields can change, and older AKShare versions may lack the documented daily-history function.
+- The report parser produces candidates from recovered text. It does not claim to solve PDF layout, table extraction, OCR, unit harmonisation, or source verification.
+- The Phase 0 CSV demonstrates that operating data exist; it is not yet a complete time series.
+- Strict tradable tests must distinguish weather reanalysis from forecasts actually available at each historical decision time.
