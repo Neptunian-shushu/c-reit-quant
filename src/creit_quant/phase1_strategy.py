@@ -74,7 +74,8 @@ def main() -> None:
         "reit_excess_return_pct",
     ]
     print(events[columns].to_string(index=False, float_format=lambda value: f"{value:.2f}"))
-    print("\n警告：仅 4 个同比信号事件，结果不构成稳健 alpha 证据。")
+    event_count = int(summary["signal_events"].iloc[0])
+    print(f"\n警告：仅 {event_count} 个同比信号事件，结果不构成稳健 alpha 证据。")
 
     if args.out_dir:
         output = Path(args.out_dir)

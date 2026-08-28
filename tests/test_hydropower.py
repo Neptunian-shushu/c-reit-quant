@@ -12,8 +12,8 @@ def test_verified_hydropower_sample_is_continuous_and_complete():
     metrics = load_hydropower_metrics()
     panel = pivot_quarterly_metrics(metrics)
 
-    assert len(metrics) == 32
-    assert len(panel) == 8
+    assert len(metrics) == 36
+    assert len(panel) == 9
     assert panel["quarter"].tolist() == [
         "2024Q2",
         "2024Q3",
@@ -23,6 +23,7 @@ def test_verified_hydropower_sample_is_continuous_and_complete():
         "2025Q3",
         "2025Q4",
         "2026Q1",
+        "2026Q2",
     ]
     assert panel.loc[panel["quarter"] == "2025Q3", "power_generation"].item() == 22043.064
 
@@ -50,7 +51,7 @@ def test_model_readiness_blocks_too_short_panel():
     readiness = assess_model_readiness(panel, minimum_quarters=12)
 
     assert readiness["ready"] is False
-    assert readiness["quarters"] == 8
+    assert readiness["quarters"] == 9
     assert readiness["consecutive"] is True
     assert readiness["complete_core_metrics"] is True
     assert "低于 12 个季度门槛" in readiness["reasons"][0]

@@ -4,6 +4,7 @@ import pytest
 from creit_quant.database import (
     audit_cross_asset_seed_database,
     audit_default_pilot_database,
+    audit_periodic_document_sequences,
     audit_research_database,
     build_asset_type_coverage,
     build_metric_coverage,
@@ -12,6 +13,7 @@ from creit_quant.database import (
     load_asset_metric_requirements,
     load_metric_definitions,
     load_reit_master,
+    DEFAULT_CROSS_DOCUMENTS_PATH,
     load_source_documents,
     select_observations_as_of,
 )
@@ -24,14 +26,14 @@ def test_default_pilot_database_has_complete_relations():
 
     assert audit["securities"] == 3
     assert audit["assets"] == 1
-    assert audit["operating_observations"] == 32
-    assert audit["source_documents"] == 10
-    assert audit["verified_documents"] == 10
+    assert audit["operating_observations"] == 36
+    assert audit["source_documents"] == 11
+    assert audit["verified_documents"] == 11
     assert audit["quarter_start"] == "2024Q2"
-    assert audit["quarter_end"] == "2026Q1"
-    assert audit["coverage_cells"] == 32
+    assert audit["quarter_end"] == "2026Q2"
+    assert audit["coverage_cells"] == 36
     assert audit["coverage_pct"] == 100.0
-    assert audit["observation_versions"] == 32
+    assert audit["observation_versions"] == 36
     assert audit["revised_observations"] == 0
 
 
@@ -40,11 +42,25 @@ def test_cross_asset_seed_preserves_real_missing_coverage():
 
     assert audit["securities"] == 3
     assert audit["assets"] == 3
-    assert audit["operating_observations"] == 11
-    assert audit["source_documents"] == 3
-    assert audit["coverage_cells"] == 8
-    assert audit["available_cells"] == 6
-    assert audit["coverage_pct"] == 75.0
+    assert audit["operating_observations"] == 20
+    assert audit["source_documents"] == 56
+    assert audit["source_documents_used"] == 5
+    assert audit["metadata_verified_documents"] == 51
+    assert audit["coverage_cells"] == 12
+    assert audit["available_cells"] == 10
+    assert audit["coverage_pct"] == pytest.approx(83.3333, rel=1e-4)
+
+
+def test_expansion_symbols_have_continuous_hashed_report_sequences():
+    sequences = audit_periodic_document_sequences(
+        load_source_documents(DEFAULT_CROSS_DOCUMENTS_PATH), ["508018", "508056"]
+    ).set_index("symbol")
+
+    assert sequences.loc["508018", "covered_quarters"] == 17
+    assert sequences.loc["508056", "covered_quarters"] == 20
+    assert sequences["consecutive"].all()
+    assert sequences["registered_documents"].tolist() == [25, 30]
+    assert sequences["hashed_documents"].tolist() == [25, 30]
 
 
 def test_metric_coverage_marks_missing_cells():
@@ -59,9 +75,9 @@ def test_metric_coverage_marks_missing_cells():
         },
     )
 
-    assert len(coverage) == 32
+    assert len(coverage) == 36
     assert coverage["status"].value_counts().to_dict() == {
-        "available": 31,
+        "available": 35,
         "missing": 1,
     }
 
@@ -74,7 +90,7 @@ def test_asset_type_coverage_uses_core_requirements():
         load_asset_metric_requirements(),
     )
 
-    assert len(coverage) == 32
+    assert len(coverage) == 36
     assert coverage["status"].eq("missing").sum() == 1
 
 

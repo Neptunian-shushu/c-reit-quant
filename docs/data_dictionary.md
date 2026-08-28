@@ -48,6 +48,13 @@
 
 当前记录证券、文档类型、报告期、发布日期、URL、核验状态、抓取时间、SHA-256、内容类型、字节数、抓取状态、解析器版本和更正关系。`supersedes_document_id` 只能指向同一证券更早发布的已登记公告。仓库不保存大型 PDF。
 
+`verification_status` 当前主要分两级：
+
+- `metadata_verified`：已确认是交易所官方定期报告，并完成内容哈希，但尚未逐项核验经营数字；
+- `human_verified`：报告中的目标指标、单位、期间和原文位置已经人工核验，可以作为正式经营观测来源。
+
+从公告目录提升报告时默认只能进入 `metadata_verified`，不能因为成功下载或正则命中就自动升级为 `human_verified`。
+
 ### `universe_history`
 
 粒度：每个快照日每只被行情源观察到的证券一行。主键：`snapshot_date + symbol`。

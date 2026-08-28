@@ -3,9 +3,12 @@
 import argparse
 
 from creit_quant.database import (
+    DEFAULT_CROSS_DOCUMENTS_PATH,
+    audit_periodic_document_sequences,
     audit_cross_asset_seed_database,
     audit_default_pilot_database,
     export_default_pilot_database,
+    load_source_documents,
 )
 
 
@@ -39,11 +42,28 @@ def main() -> None:
     cross = audit_cross_asset_seed_database()
     print("\n跨资产数据库种子审计通过")
     print(f"证券 / 资产: {cross['securities']} / {cross['assets']}")
-    print(f"经营观测 / 来源公告: {cross['operating_observations']} / {cross['source_documents']}")
+    print(
+        f"经营观测 / 已使用来源: {cross['operating_observations']} / "
+        f"{cross['source_documents_used']}"
+    )
+    print(
+        f"定期报告登记: {cross['source_documents']} 份，"
+        f"其中元数据已核验 {cross['metadata_verified_documents']} 份"
+    )
     print(
         f"核心指标覆盖: {cross['available_cells']} / {cross['coverage_cells']} "
         f"({cross['coverage_pct']:.1f}%)"
     )
+    sequences = audit_periodic_document_sequences(
+        load_source_documents(DEFAULT_CROSS_DOCUMENTS_PATH), ["508018", "508056"]
+    )
+    print("扩面标的定期报告序列:")
+    for row in sequences.itertuples(index=False):
+        print(
+            f"  - {row.symbol}: {row.quarter_start} 至 {row.quarter_end}，"
+            f"{row.covered_quarters}/{row.expected_quarters} 个季度，"
+            f"登记 {row.registered_documents} 份，哈希 {row.hashed_documents} 份"
+        )
     if args.as_of and not args.out_dir:
         parser.error("--as-of 必须与 --out-dir 一起使用")
     if args.out_dir:

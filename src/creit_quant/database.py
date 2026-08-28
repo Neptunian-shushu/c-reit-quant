@@ -12,6 +12,7 @@ from creit_quant.hydropower import (
     load_hydropower_asset,
     load_hydropower_metrics,
 )
+from creit_quant.documents import PERIODIC_DOCUMENT_TYPES
 from creit_quant.strategy import DEFAULT_DISTRIBUTIONS_PATH, load_distributions
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -165,6 +166,38 @@ def load_operating_metrics(path: str | Path) -> pd.DataFrame:
     if frame[["symbol", "asset_id", "metric", "unit", "source_url"]].isna().any().any():
         raise ValueError("经营观测关键字段不能为空")
     return frame.sort_values(OBSERVATION_KEY + ["publication_date"]).reset_index(drop=True)
+
+
+def audit_periodic_document_sequences(
+    documents: pd.DataFrame, symbols: list[str] | None = None
+) -> pd.DataFrame:
+    """按证券检查已登记定期报告是否形成连续季度覆盖。"""
+
+    periodic = documents.loc[
+        documents["document_type"].isin(PERIODIC_DOCUMENT_TYPES)
+    ].copy()
+    if symbols is not None:
+        periodic = periodic.loc[periodic["symbol"].isin(symbols)]
+    rows: list[dict[str, object]] = []
+    for symbol, group in periodic.groupby("symbol"):
+        periods = pd.PeriodIndex(group["period_end"], freq="Q").unique().sort_values()
+        expected = pd.period_range(periods.min(), periods.max(), freq="Q")
+        rows.append(
+            {
+                "symbol": symbol,
+                "quarter_start": str(periods.min()),
+                "quarter_end": str(periods.max()),
+                "covered_quarters": len(periods),
+                "expected_quarters": len(expected),
+                "consecutive": len(periods) == len(expected) and set(periods) == set(expected),
+                "registered_documents": len(group),
+                "hashed_documents": int(group["content_sha256"].notna().sum()),
+                "human_verified_documents": int(
+                    group["verification_status"].eq("human_verified").sum()
+                ),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("symbol").reset_index(drop=True)
 
 
 def build_metric_coverage(
@@ -417,16 +450,21 @@ def audit_research_database(
             raise ValueError(f"资产类型要求包含未登记指标: {unknown_requirements}")
         coverage = build_asset_type_coverage(assets, metrics, requirements)
     versions = build_observation_versions(metrics, documents)
+    used_document_urls = set(metrics["source_url"]) | set(distributions["source_url"])
     return {
         "securities": len(master),
         "assets": len(assets),
         "metric_definitions": len(definitions),
         "source_documents": len(documents),
+        "source_documents_used": len(used_document_urls),
         "operating_observations": len(metrics),
         "distributions": len(distributions),
         "quarter_start": str(periods.min()),
         "quarter_end": str(periods.max()),
         "verified_documents": int(documents["verification_status"].eq("human_verified").sum()),
+        "metadata_verified_documents": int(
+            documents["verification_status"].eq("metadata_verified").sum()
+        ),
         "coverage_cells": len(coverage),
         "available_cells": int(coverage["status"].eq("available").sum()),
         "coverage_pct": float(coverage["status"].eq("available").mean() * 100),

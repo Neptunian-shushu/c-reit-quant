@@ -31,3 +31,7 @@ symbol,asset_id,period_end,metric,value,unit,publication_date,source_url,source_
 508026,wuyiqiao_1_5,2026-03-31,utilization_hours,627,hours,2026-04-22,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-04-22/508026_20260422_21XV.pdf,披露名称为等效利用小时数
 508026,wuyiqiao_1_5,2026-03-31,settled_electricity,8448.1966,10k_kWh,2026-04-22,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-04-22/508026_20260422_21XV.pdf,披露名称为结算电量
 508026,wuyiqiao_1_5,2026-03-31,settlement_tariff_excl_tax,0.3255,RMB_per_kWh,2026-04-22,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-04-22/508026_20260422_21XV.pdf,不含税结算电价
+508026,wuyiqiao_1_5,2026-06-30,power_generation,8421.2304,10k_kWh,2026-07-21,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508026_20260721_JI1N.pdf,2026年第2季度报告第8至9页；同比下降9.05%
+508026,wuyiqiao_1_5,2026-06-30,utilization_hours,615,hours,2026-07-21,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508026_20260721_JI1N.pdf,披露名称为等效利用小时数
+508026,wuyiqiao_1_5,2026-06-30,settled_electricity,8293.1378,10k_kWh,2026-07-21,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508026_20260721_JI1N.pdf,取自四川电力交易中心2026年4至6月交易结算单
+508026,wuyiqiao_1_5,2026-06-30,settlement_tariff_excl_tax,0.1443,RMB_per_kWh,2026-07-21,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508026_20260721_JI1N.pdf,平均不含税结算电价；含税电价0.1630元/千瓦时

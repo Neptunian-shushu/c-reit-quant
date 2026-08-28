@@ -7,8 +7,13 @@ from pathlib import Path
 
 import pandas as pd
 
+from creit_quant.announcements import load_announcement_catalog
 from creit_quant.database import DEFAULT_DOCUMENTS_PATH, load_source_documents
-from creit_quant.documents import enrich_document_metadata
+from creit_quant.documents import (
+    build_periodic_document_registry,
+    enrich_document_metadata,
+    merge_document_registries,
+)
 
 
 def main() -> None:
@@ -17,11 +22,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", default=str(DEFAULT_DOCUMENTS_PATH))
     parser.add_argument("--timeout", type=float, default=30)
+    parser.add_argument("--discover-catalog", help="从交易所公告目录发现指定证券的定期报告")
+    parser.add_argument("--symbols", nargs="*", help="配合 --discover-catalog 使用的证券代码")
     parser.add_argument("--write", action="store_true", help="将抓取结果写回登记表")
     args = parser.parse_args()
 
     path = Path(args.registry)
     documents = load_source_documents(path)
+    if args.discover_catalog:
+        if not args.symbols:
+            parser.error("--discover-catalog 必须同时指定 --symbols")
+        catalog = load_announcement_catalog(args.discover_catalog)
+        discovered = build_periodic_document_registry(catalog, args.symbols)
+        before = len(documents)
+        documents = merge_document_registries(documents, discovered)
+        print(f"发现定期报告候选: {len(discovered)}，新增登记: {len(documents) - before}")
     enriched = enrich_document_metadata(documents, timeout=args.timeout)
     counts = enriched["retrieval_status"].value_counts().to_dict()
     print(f"公告总数: {len(enriched)}")
@@ -29,7 +44,9 @@ def main() -> None:
     if args.write:
         serialised = enriched.copy()
         for column in ["period_end", "publication_date"]:
-            serialised[column] = serialised[column].dt.strftime("%Y-%m-%d")
+            serialised[column] = pd.to_datetime(
+                serialised[column], errors="raise"
+            ).dt.strftime("%Y-%m-%d")
         retrieved = serialised["retrieved_at"].notna()
         serialised.loc[retrieved, "retrieved_at"] = pd.to_datetime(
             serialised.loc[retrieved, "retrieved_at"], utc=True
