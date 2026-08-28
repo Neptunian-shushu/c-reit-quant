@@ -4,10 +4,15 @@ import pytest
 from creit_quant.database import (
     audit_default_pilot_database,
     audit_research_database,
+    build_asset_type_coverage,
     build_metric_coverage,
+    build_observation_versions,
+    export_default_pilot_database,
+    load_asset_metric_requirements,
     load_metric_definitions,
     load_reit_master,
     load_source_documents,
+    select_observations_as_of,
 )
 from creit_quant.hydropower import load_hydropower_asset, load_hydropower_metrics
 from creit_quant.strategy import load_distributions
@@ -25,6 +30,8 @@ def test_default_pilot_database_has_complete_relations():
     assert audit["quarter_end"] == "2026Q1"
     assert audit["coverage_cells"] == 32
     assert audit["coverage_pct"] == 100.0
+    assert audit["observation_versions"] == 32
+    assert audit["revised_observations"] == 0
 
 
 def test_metric_coverage_marks_missing_cells():
@@ -44,6 +51,63 @@ def test_metric_coverage_marks_missing_cells():
         "available": 31,
         "missing": 1,
     }
+
+
+def test_asset_type_coverage_uses_core_requirements():
+    metrics = load_hydropower_metrics().iloc[1:].copy()
+    coverage = build_asset_type_coverage(
+        load_hydropower_asset(),
+        metrics,
+        load_asset_metric_requirements(),
+    )
+
+    assert len(coverage) == 32
+    assert coverage["status"].eq("missing").sum() == 1
+
+
+def test_point_in_time_versions_preserve_old_and_revised_values():
+    metrics = pd.DataFrame(
+        {
+            "symbol": ["508026", "508026"],
+            "asset_id": ["asset", "asset"],
+            "period_end": pd.to_datetime(["2025-06-30", "2025-06-30"]),
+            "metric": ["power_generation", "power_generation"],
+            "value": [100.0, 105.0],
+            "unit": ["10k_kWh", "10k_kWh"],
+            "publication_date": pd.to_datetime(["2025-07-20", "2025-08-01"]),
+            "source_url": ["https://example.test/initial", "https://example.test/revised"],
+        }
+    )
+    documents = pd.DataFrame(
+        {
+            "document_id": ["initial", "revised"],
+            "source_url": ["https://example.test/initial", "https://example.test/revised"],
+            "verification_status": ["human_verified", "human_verified"],
+        }
+    )
+
+    versions = build_observation_versions(metrics, documents)
+    old = select_observations_as_of(versions, "2025-07-31")
+    revised = select_observations_as_of(versions, "2025-08-01")
+
+    assert old["value"].tolist() == [100.0]
+    assert revised["value"].tolist() == [105.0]
+    assert versions.loc[1, "supersedes_observation_id"] == versions.loc[0, "observation_id"]
+    assert versions.loc[0, "valid_to"] == pd.Timestamp("2025-08-01")
+
+
+def test_database_export_builds_versions_coverage_and_snapshot(tmp_path):
+    paths = export_default_pilot_database(tmp_path, as_of="2025-07-31")
+
+    assert set(paths) == {
+        "observation_versions",
+        "core_metric_coverage",
+        "point_in_time_snapshot",
+    }
+    assert all(path.exists() for path in paths.values())
+    snapshot = pd.read_csv(paths["point_in_time_snapshot"], dtype={"symbol": str})
+    assert snapshot["snapshot_as_of"].eq("2025-07-31").all()
+    assert pd.to_datetime(snapshot["valid_from"]).le(pd.Timestamp("2025-07-31")).all()
 
 
 def test_database_audit_rejects_unregistered_source_url():

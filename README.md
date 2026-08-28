@@ -12,7 +12,7 @@
 
 **探索性策略已经得到首个结果。** 策略严格保持纯多头：发电量同比为正时持有 508026，否则持有现金；932047 只作为业绩基准。按 10 万元本金、买卖双向各万一佣金、每笔最低 5 元、现金年化收益 1.5% 计算，2025-07-22 至 2026-08-27 策略收益约 **-5.36%**；同期 508026 含分派且扣除买入佣金为 **-6.42%**，932047 全收益基准为 **-12.35%**。策略略好于买入持有并显著好于基准，但只有 4 个事件，仍不能视为 alpha 证据。详见 [初步策略结果](docs/phase1_strategy_results.md)。
 
-**研究数据库已建立第一版关系层。** 当前把证券、底层资产、指标定义、公告来源、经营观测和现金分派拆成独立表，并能离线检查主外键、规范单位、公告时点和来源覆盖。508026 现有 32 条经营观测都能追溯到已人工核验的来源文档。设计与扩展顺序见 [研究数据库设计](docs/database_design.md)。
+**研究数据库已建立第一版关系层。** 当前把证券、底层资产、指标定义、资产类型要求、公告来源、经营观测和现金分派拆成独立表，并能离线检查主外键、规范单位、公告时点和来源覆盖。经营观测可构建为带生效区间与修订链的 point-in-time 版本，并按指定历史日期生成当时可见快照。508026 现有 32 条经营观测都能追溯到已人工核验的来源文档。设计与扩展顺序见 [研究数据库设计](docs/database_design.md)，字段约定见 [数据字典](docs/data_dictionary.md)。
 
 ## 核心研究问题
 
@@ -68,6 +68,11 @@ python -m creit_quant.phase1
 # Phase 1 研究数据库关系与来源审计
 python -m creit_quant.phase1_database
 
+# 导出规范版本表、核心指标覆盖表和 2025-07-31 历史快照
+python -m creit_quant.phase1_database \
+  --out-dir data/processed/phase1_database \
+  --as-of 2025-07-31
+
 # Phase 1 探索性发电量披露策略（需要联网行情）
 python -m creit_quant.phase1_strategy \
   --end-date 20260828 \
@@ -92,6 +97,7 @@ c-reit-quant/
 │   └── data_sources.yaml
 ├── data/
 │   ├── reference/
+│   │   ├── asset_type_metric_requirements.csv
 │   │   └── metric_definitions.csv
 │   └── samples/
 │       ├── phase0_operating_metrics.csv
@@ -102,6 +108,7 @@ c-reit-quant/
 │       └── 508026_source_documents.csv
 ├── docs/
 │   ├── database_design.md
+│   ├── data_dictionary.md
 │   ├── data_availability.md
 │   ├── phase0_findings.md
 │   ├── phase1_hydropower_findings.md
