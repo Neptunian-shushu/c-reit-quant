@@ -117,8 +117,9 @@
 - `exact`：季度聚合与年报一致；
 - `within_rounding`：差异可以由季度报告的万千瓦时、0.01亿千瓦时、0.01亿元等披露精度解释；
 - `annual_true_up`：年报相对季度暂估发生调整，但没有证据把差额可靠分配到某个季度。
+- `basis_difference`：季度和年报使用同名指标，但定义、计量时点或结算基础不同，不能直接覆盖。
 
-`annual_true_up`不能直接覆盖任一季度。只有后续公告明确给出季度归属时，才能新增对应的point-in-time修订版本。
+`annual_true_up`和`basis_difference`都不能直接覆盖任一季度。只有后续公告明确给出季度归属或统一口径时，才能新增对应的point-in-time修订版本。
 
 ### `distributions`
 

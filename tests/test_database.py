@@ -79,7 +79,7 @@ def test_energy_seed_has_asset_level_cross_section_and_honest_tax_gap():
     assert audit["assets"] == 6
     assert audit["operating_observations"] == 39
     assert audit["source_documents"] == 61
-    assert audit["verified_documents"] == 3
+    assert audit["verified_documents"] == 6
     assert audit["coverage_cells"] == 24
     assert audit["available_cells"] == 22
     assert audit["coverage_pct"] == pytest.approx(91.6667, rel=1e-4)
@@ -242,6 +242,7 @@ def test_solar_hydro_annual_revision_is_point_in_time_not_overwrite():
 def test_2025_energy_panels_reconcile_to_annual_reports():
     metrics = pd.concat(
         [
+            load_operating_metrics(DEFAULT_WIND_METRICS_PATH),
             load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH),
             load_operating_metrics(DEFAULT_GAS_METRICS_PATH),
         ],
@@ -254,10 +255,11 @@ def test_2025_energy_panels_reconcile_to_annual_reports():
     )
 
     assert result == {
-        "reconciliations": 27,
-        "exact": 16,
-        "within_rounding": 10,
+        "reconciliations": 32,
+        "exact": 19,
+        "within_rounding": 11,
         "annual_true_up": 1,
+        "basis_difference": 1,
     }
 
 
@@ -271,12 +273,32 @@ def test_annual_reconciliation_rejects_inconsistent_difference(tmp_path):
         load_annual_reconciliations(path)
 
 
+def test_annual_reconciliation_requires_human_verified_report():
+    reconciliations = load_annual_reconciliations()
+    metrics = pd.concat(
+        [
+            load_operating_metrics(DEFAULT_WIND_METRICS_PATH),
+            load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH),
+            load_operating_metrics(DEFAULT_GAS_METRICS_PATH),
+        ],
+        ignore_index=True,
+    )
+    documents = load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH)
+    source = reconciliations.loc[0, "annual_source_url"]
+    documents.loc[documents["source_url"].eq(source), "verification_status"] = (
+        "metadata_verified"
+    )
+
+    with pytest.raises(ValueError, match="人工核验年报"):
+        audit_annual_reconciliations(reconciliations, metrics, documents)
+
+
 def test_energy_export_includes_annual_reconciliations(tmp_path):
     paths = export_energy_seed_database(tmp_path)
 
     assert "energy_annual_reconciliations" in paths
     exported = pd.read_csv(paths["energy_annual_reconciliations"])
-    assert len(exported) == 27
+    assert len(exported) == 32
 
 
 def test_energy_symbols_have_continuous_hashed_report_sequences():

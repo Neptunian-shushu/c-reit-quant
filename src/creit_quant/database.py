@@ -302,7 +302,7 @@ def load_annual_reconciliations(
         "settled_electricity_weighted_average",
         "fuel_consumption_weighted_average",
     }
-    statuses = {"exact", "within_rounding", "annual_true_up"}
+    statuses = {"exact", "within_rounding", "annual_true_up", "basis_difference"}
     if not set(frame["aggregation_method"]).issubset(methods):
         raise ValueError("年度勾稽表包含未知聚合方法")
     if not set(frame["status"]).issubset(statuses):
@@ -354,7 +354,15 @@ def audit_annual_reconciliations(
     if not set(reconciliations["annual_source_url"]).issubset(document_lookup.index):
         raise ValueError("年度勾稽表存在未登记的年报来源")
     linked = reconciliations.join(
-        document_lookup[["symbol", "period_end", "publication_date", "document_type"]],
+        document_lookup[
+            [
+                "symbol",
+                "period_end",
+                "publication_date",
+                "document_type",
+                "verification_status",
+            ]
+        ],
         on="annual_source_url",
         rsuffix="_document",
         validate="many_to_one",
@@ -365,9 +373,11 @@ def audit_annual_reconciliations(
         linked["annual_publication_date"] != linked["publication_date"]
     ) | (~linked["document_type"].eq("annual_report")) | (
         linked["period_end"].dt.year != linked["fiscal_year"]
+    ) | (
+        ~linked["verification_status"].eq("human_verified")
     )
     if mismatch.any():
-        raise ValueError("年度勾稽记录与年报来源的证券、年度或发布日期不一致")
+        raise ValueError("年度勾稽记录与人工核验年报的证券、年度或发布日期不一致")
 
     rows: list[dict[str, object]] = []
     for row in reconciliations.itertuples(index=False):
@@ -411,6 +421,7 @@ def audit_annual_reconciliations(
         "exact": int(status.eq("exact").sum()),
         "within_rounding": int(status.eq("within_rounding").sum()),
         "annual_true_up": int(status.eq("annual_true_up").sum()),
+        "basis_difference": int(status.eq("basis_difference").sum()),
     }
 
 

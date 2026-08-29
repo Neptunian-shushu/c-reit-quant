@@ -144,6 +144,7 @@ def main() -> None:
         load_annual_reconciliations(),
         pd.concat(
             [
+                load_operating_metrics(DEFAULT_WIND_METRICS_PATH),
                 load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH),
                 load_operating_metrics(DEFAULT_GAS_METRICS_PATH),
             ],
@@ -155,7 +156,8 @@ def main() -> None:
         f"2025年季度—年报勾稽: {annual_reconciliation['reconciliations']} 项，"
         f"完全一致 {annual_reconciliation['exact']} 项，"
         f"披露精度内差异 {annual_reconciliation['within_rounding']} 项，"
-        f"年报调整 {annual_reconciliation['annual_true_up']} 项"
+        f"年报调整 {annual_reconciliation['annual_true_up']} 项，"
+        f"口径差异 {annual_reconciliation['basis_difference']} 项"
     )
     event_audit = audit_asset_events(
         load_asset_events(),
