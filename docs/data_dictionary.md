@@ -31,6 +31,8 @@
 
 `canonical_unit` 是正式面板单位；`asset_scope` 表示适用资产类型；`expected_frequency` 表示预期披露频率。同名但税基、范围或计算方法不同的指标必须拆分，不能强行合并。
 
+能源数据中特别区分：`grid_connected_electricity`（上网电量）、`settled_electricity`（结算电量）、`settlement_revenue`（结算电费）和`electricity_revenue`（项目公司发电／售电收入）。含税结算电费不能与财务报表不含税收入合并；含税电价也不能自行换算成不含税电价。
+
 ### `asset_type_metric_requirements`
 
 粒度：每个资产类型与规范指标组合一行。主键：`asset_type + metric`。
@@ -93,6 +95,10 @@
 | `quality_status` | 已核验或未核验状态 |
 
 历史快照使用半开区间：`valid_from <= as_of < valid_to`。因此在更正公告发布当天，快照切换到新版本。
+
+### `asset_events`
+
+粒度：每项会改变资产边界或经营可比性的事件一行。当前覆盖扩募购入资产、外部电网停机和电价机制变化。只知道月份而不知道具体日期时，必须保存`date_precision=month`，不能虚构日级起止时间。
 
 ### `distributions`
 

@@ -4,6 +4,9 @@ import pytest
 from creit_quant.database import (
     audit_cross_asset_seed_database,
     audit_default_pilot_database,
+    audit_energy_seed_database,
+    audit_asset_events,
+    audit_wind_panel_database,
     audit_periodic_document_sequences,
     audit_research_database,
     build_asset_type_coverage,
@@ -11,9 +14,16 @@ from creit_quant.database import (
     build_observation_versions,
     export_default_pilot_database,
     load_asset_metric_requirements,
+    load_asset_events,
+    load_assets,
     load_metric_definitions,
+    load_operating_metrics,
     load_reit_master,
     DEFAULT_CROSS_DOCUMENTS_PATH,
+    DEFAULT_ENERGY_ASSETS_PATH,
+    DEFAULT_ENERGY_DOCUMENTS_PATH,
+    DEFAULT_ENERGY_METRICS_PATH,
+    DEFAULT_WIND_METRICS_PATH,
     load_source_documents,
     select_observations_as_of,
 )
@@ -24,7 +34,7 @@ from creit_quant.strategy import load_distributions
 def test_default_pilot_database_has_complete_relations():
     audit = audit_default_pilot_database()
 
-    assert audit["securities"] == 3
+    assert audit["securities"] == 6
     assert audit["assets"] == 1
     assert audit["operating_observations"] == 36
     assert audit["source_documents"] == 11
@@ -40,7 +50,7 @@ def test_default_pilot_database_has_complete_relations():
 def test_cross_asset_seed_preserves_real_missing_coverage():
     audit = audit_cross_asset_seed_database()
 
-    assert audit["securities"] == 3
+    assert audit["securities"] == 6
     assert audit["assets"] == 3
     assert audit["operating_observations"] == 20
     assert audit["source_documents"] == 56
@@ -49,6 +59,101 @@ def test_cross_asset_seed_preserves_real_missing_coverage():
     assert audit["coverage_cells"] == 12
     assert audit["available_cells"] == 10
     assert audit["coverage_pct"] == pytest.approx(83.3333, rel=1e-4)
+
+
+def test_energy_seed_has_asset_level_cross_section_and_honest_tax_gap():
+    audit = audit_energy_seed_database()
+
+    assert audit["securities"] == 6
+    assert audit["assets"] == 6
+    assert audit["operating_observations"] == 39
+    assert audit["source_documents"] == 61
+    assert audit["verified_documents"] == 3
+    assert audit["coverage_cells"] == 24
+    assert audit["available_cells"] == 22
+    assert audit["coverage_pct"] == pytest.approx(91.6667, rel=1e-4)
+
+    assets = load_assets(DEFAULT_ENERGY_ASSETS_PATH)
+    assert set(assets["asset_type"]) == {"wind", "solar", "hydropower", "gas_power"}
+
+    metrics = load_operating_metrics(DEFAULT_ENERGY_METRICS_PATH)
+    hydro_tariffs = metrics.loc[
+        metrics["asset_id"].isin(["sujiahekou_hydro", "songshanhekou_hydro"])
+        & metrics["metric"].eq("settlement_tariff")
+    ]
+    assert hydro_tariffs["raw_unit"].str.contains("含税").all()
+    assert not metrics.loc[
+        metrics["asset_id"].isin(["sujiahekou_hydro", "songshanhekou_hydro"]),
+        "metric",
+    ].eq("settlement_tariff_excl_tax").any()
+
+
+def test_wind_panel_has_thirteen_continuous_generation_quarters():
+    audit = audit_wind_panel_database()
+
+    assert audit["operating_observations"] == 86
+    assert audit["source_documents"] == 19
+    assert audit["source_documents_used"] == 13
+    assert audit["quarter_start"] == "2023Q2"
+    assert audit["quarter_end"] == "2026Q2"
+    assert audit["coverage_cells"] == 52
+    assert audit["available_cells"] == 41
+
+    metrics = load_operating_metrics(DEFAULT_WIND_METRICS_PATH)
+    generation = metrics.loc[metrics["metric"].eq("power_generation")]
+    quarters = generation["period_end"].dt.to_period("Q")
+    assert len(generation) == 13
+    assert quarters.tolist() == list(pd.period_range("2023Q2", "2026Q2", freq="Q"))
+    assert metrics["metric"].eq("average_wind_speed").sum() == 11
+
+
+def test_wind_snapshot_matches_same_period_in_longitudinal_panel():
+    snapshot = load_operating_metrics(DEFAULT_ENERGY_METRICS_PATH)
+    snapshot = snapshot.loc[snapshot["symbol"].eq("508028")]
+    panel = load_operating_metrics(DEFAULT_WIND_METRICS_PATH)
+    panel = panel.loc[panel["period_end"].eq(pd.Timestamp("2026-06-30"))]
+    common = sorted(set(snapshot["metric"]).intersection(panel["metric"]))
+
+    left = snapshot.loc[snapshot["metric"].isin(common), ["metric", "value", "unit"]]
+    right = panel.loc[panel["metric"].isin(common), ["metric", "value", "unit"]]
+    pd.testing.assert_frame_equal(
+        left.sort_values("metric").reset_index(drop=True),
+        right.sort_values("metric").reset_index(drop=True),
+    )
+
+
+def test_energy_symbols_have_continuous_hashed_report_sequences():
+    sequences = audit_periodic_document_sequences(
+        load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+        ["180401", "508028", "508096"],
+    ).set_index("symbol")
+
+    assert sequences["consecutive"].all()
+    assert sequences["hashed_documents"].to_dict() == {
+        "180401": 23,
+        "508028": 19,
+        "508096": 19,
+    }
+    assert sequences["covered_quarters"].to_dict() == {
+        "180401": 16,
+        "508028": 13,
+        "508096": 13,
+    }
+
+
+def test_energy_asset_events_preserve_date_precision_and_relations():
+    events = load_asset_events()
+    audit = audit_asset_events(
+        events,
+        load_assets(DEFAULT_ENERGY_ASSETS_PATH),
+        load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+    )
+
+    assert audit == {"events": 3, "asset_level_events": 2, "symbol_level_events": 1}
+    outage = events.set_index("event_id").loc["508028_grid_outage_2025Q3"]
+    assert outage["date_precision"] == "month"
+    assert outage["duration_days"] == 14
+    assert "起止日未知" in outage["description"]
 
 
 def test_expansion_symbols_have_continuous_hashed_report_sequences():

@@ -1,14 +1,22 @@
-"""运行 508026 研究数据库关系审计并可导出 point-in-time 数据产品。"""
+"""运行研究数据库关系审计并可导出 point-in-time 数据产品。"""
 
 import argparse
 
 from creit_quant.database import (
     DEFAULT_CROSS_DOCUMENTS_PATH,
+    DEFAULT_ENERGY_DOCUMENTS_PATH,
     audit_periodic_document_sequences,
     audit_cross_asset_seed_database,
     audit_default_pilot_database,
+    audit_energy_seed_database,
+    audit_asset_events,
+    audit_wind_panel_database,
     export_default_pilot_database,
+    export_energy_seed_database,
+    load_asset_events,
+    load_assets,
     load_source_documents,
+    DEFAULT_ENERGY_ASSETS_PATH,
 )
 
 
@@ -54,6 +62,36 @@ def main() -> None:
         f"核心指标覆盖: {cross['available_cells']} / {cross['coverage_cells']} "
         f"({cross['coverage_pct']:.1f}%)"
     )
+    energy = audit_energy_seed_database()
+    print("\n能源扩面数据库种子审计通过")
+    print(f"证券 / 资产: {energy['securities']} / {energy['assets']}")
+    print(
+        f"经营观测 / 人工核验来源: {energy['operating_observations']} / "
+        f"{energy['verified_documents']}"
+    )
+    print(
+        f"核心指标覆盖: {energy['available_cells']} / {energy['coverage_cells']} "
+        f"({energy['coverage_pct']:.1f}%)"
+    )
+    wind = audit_wind_panel_database()
+    print("\n508028 海上风电连续季度面板审计通过")
+    print(
+        f"季度: {wind['quarter_start']} 至 {wind['quarter_end']}，"
+        f"经营观测 {wind['operating_observations']} 条"
+    )
+    print(
+        f"核心指标覆盖: {wind['available_cells']} / {wind['coverage_cells']} "
+        f"({wind['coverage_pct']:.1f}%)"
+    )
+    event_audit = audit_asset_events(
+        load_asset_events(),
+        load_assets(DEFAULT_ENERGY_ASSETS_PATH),
+        load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+    )
+    print(
+        f"能源资产事件: {event_audit['events']} 条，"
+        f"其中资产级 {event_audit['asset_level_events']} 条"
+    )
     sequences = audit_periodic_document_sequences(
         load_source_documents(DEFAULT_CROSS_DOCUMENTS_PATH), ["508018", "508056"]
     )
@@ -64,10 +102,22 @@ def main() -> None:
             f"{row.covered_quarters}/{row.expected_quarters} 个季度，"
             f"登记 {row.registered_documents} 份，哈希 {row.hashed_documents} 份"
         )
+    energy_sequences = audit_periodic_document_sequences(
+        load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+        ["180401", "508028", "508096"],
+    )
+    print("能源标的定期报告序列:")
+    for row in energy_sequences.itertuples(index=False):
+        print(
+            f"  - {row.symbol}: {row.quarter_start} 至 {row.quarter_end}，"
+            f"{row.covered_quarters}/{row.expected_quarters} 个季度，"
+            f"登记 {row.registered_documents} 份，哈希 {row.hashed_documents} 份"
+        )
     if args.as_of and not args.out_dir:
         parser.error("--as-of 必须与 --out-dir 一起使用")
     if args.out_dir:
         paths = export_default_pilot_database(args.out_dir, as_of=args.as_of)
+        paths.update(export_energy_seed_database(args.out_dir))
         print("数据库产品已导出:")
         for name, path in paths.items():
             print(f"  - {name}: {path}")

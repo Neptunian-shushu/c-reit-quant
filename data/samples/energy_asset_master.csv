@@ -1,0 +1,7 @@
+symbol,asset_id,asset_name,asset_type,aggregation_scope,installed_capacity_mw,location,asset_effective_from,source_url,notes
+508028,binhai_h1_h2,滨海北H1和H2海上风电项目,wind,project_portfolio,500,江苏省盐城市,2023-03-20,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508028_20260721_W0FA.pdf,季度报告按两个项目合并披露经营数据；不拆分无法核验的项目值
+508096,hubei_jingtai_pv,湖北随州100MWp光伏发电项目,solar,asset,100,湖北省随州市淅河镇,2023-03-20,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508096_20260721_BTD8.pdf,首发光伏资产
+508096,yulin_pv,榆林市榆阳区300MWp光伏发电项目,solar,asset,300,陕西省榆林市榆阳区小壕兔乡,2023-03-20,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508096_20260721_BTD8.pdf,首发光伏资产
+508096,sujiahekou_hydro,保山市槟榔江苏家河口水电站项目,hydropower,asset,,云南省保山市腾冲市猴桥镇,2025-12-25,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508096_20260721_BTD8.pdf,第一次扩募购入的引水式水电资产；本报告未列装机容量所以留空
+508096,songshanhekou_hydro,保山市槟榔江松山河口水电站项目,hydropower,asset,,云南省保山市腾冲市猴桥镇,2025-12-25,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508096_20260721_BTD8.pdf,第一次扩募购入的引水式水电资产；本报告未列装机容量所以留空
+180401,dongbu_power_phase1,东部电厂一期项目,gas_power,asset,,广东省深圳市大鹏新区大鹏街道下沙秤头角,2022-07-11,https://disc.static.szse.cn/disc/disk03/finalpage/2026-07-20/62427907-8e2e-4a82-94bd-dd38d7f9998d.PDF,以液化天然气为主要燃料；本报告未列装机容量所以留空

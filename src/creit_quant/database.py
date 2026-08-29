@@ -23,6 +23,11 @@ DEFAULT_REQUIREMENTS_PATH = ROOT / "data" / "reference" / "asset_type_metric_req
 DEFAULT_CROSS_ASSETS_PATH = ROOT / "data" / "samples" / "cross_asset_asset_master.csv"
 DEFAULT_CROSS_METRICS_PATH = ROOT / "data" / "samples" / "cross_asset_operating_metrics.csv"
 DEFAULT_CROSS_DOCUMENTS_PATH = ROOT / "data" / "samples" / "cross_asset_source_documents.csv"
+DEFAULT_ENERGY_ASSETS_PATH = ROOT / "data" / "samples" / "energy_asset_master.csv"
+DEFAULT_ENERGY_METRICS_PATH = ROOT / "data" / "samples" / "energy_operating_metrics.csv"
+DEFAULT_ENERGY_DOCUMENTS_PATH = ROOT / "data" / "samples" / "energy_source_documents.csv"
+DEFAULT_WIND_METRICS_PATH = ROOT / "data" / "samples" / "508028_quarterly_operating_metrics.csv"
+DEFAULT_ENERGY_EVENTS_PATH = ROOT / "data" / "samples" / "energy_asset_events.csv"
 
 OBSERVATION_KEY = ["symbol", "asset_id", "period_end", "metric"]
 
@@ -166,6 +171,56 @@ def load_operating_metrics(path: str | Path) -> pd.DataFrame:
     if frame[["symbol", "asset_id", "metric", "unit", "source_url"]].isna().any().any():
         raise ValueError("经营观测关键字段不能为空")
     return frame.sort_values(OBSERVATION_KEY + ["publication_date"]).reset_index(drop=True)
+
+
+def load_asset_events(path: str | Path = DEFAULT_ENERGY_EVENTS_PATH) -> pd.DataFrame:
+    """读取扩募、停机和电价机制等会改变可比性的资产事件。"""
+
+    frame = _read_table(
+        path,
+        {
+            "event_id",
+            "symbol",
+            "event_type",
+            "event_start",
+            "date_precision",
+            "publication_date",
+            "source_url",
+            "verification_status",
+        },
+        name="资产事件表",
+    )
+    if frame["event_id"].duplicated().any():
+        raise ValueError("资产事件 event_id 必须唯一")
+    frame["event_start"] = pd.to_datetime(frame["event_start"], errors="raise")
+    frame["event_end"] = pd.to_datetime(frame.get("event_end"), errors="coerce")
+    frame["publication_date"] = pd.to_datetime(frame["publication_date"], errors="raise")
+    if (frame["event_end"].notna() & frame["event_end"].lt(frame["event_start"])).any():
+        raise ValueError("资产事件结束日期不能早于开始日期")
+    if not set(frame["date_precision"]).issubset({"day", "month", "quarter"}):
+        raise ValueError("资产事件日期精度只能是 day、month 或 quarter")
+    return frame.sort_values(["event_start", "event_id"]).reset_index(drop=True)
+
+
+def audit_asset_events(
+    events: pd.DataFrame, assets: pd.DataFrame, documents: pd.DataFrame
+) -> dict[str, int]:
+    """检查事件的证券、可选资产键和正式来源关系。"""
+
+    if not set(events["symbol"]).issubset(set(documents["symbol"])):
+        raise ValueError("资产事件存在来源登记表中没有的证券")
+    if not set(events["source_url"]).issubset(set(documents["source_url"])):
+        raise ValueError("资产事件存在未登记的来源 URL")
+    with_asset = events.loc[events["asset_id"].notna() & events["asset_id"].ne("")]
+    asset_keys = set(zip(assets["symbol"], assets["asset_id"], strict=False))
+    event_asset_keys = set(zip(with_asset["symbol"], with_asset["asset_id"], strict=False))
+    if not event_asset_keys.issubset(asset_keys):
+        raise ValueError("资产事件存在未登记的 symbol/asset_id")
+    return {
+        "events": len(events),
+        "asset_level_events": len(with_asset),
+        "symbol_level_events": len(events) - len(with_asset),
+    }
 
 
 def audit_periodic_document_sequences(
@@ -393,6 +448,27 @@ def audit_research_database(
     if not bad_units.empty:
         raise ValueError(f"经营指标单位与指标字典不一致: {bad_units.to_dict('records')}")
 
+    metric_scopes = definitions.set_index("metric")["asset_scope"].to_dict()
+    typed_metrics = metrics.merge(
+        assets[["symbol", "asset_id", "asset_type"]],
+        on=["symbol", "asset_id"],
+        how="left",
+        validate="many_to_one",
+    )
+    invalid_scopes = typed_metrics.loc[
+        typed_metrics.apply(
+            lambda row: "all" not in str(metric_scopes[row["metric"]]).split("|")
+            and row["asset_type"]
+            not in str(metric_scopes[row["metric"]]).split("|"),
+            axis=1,
+        ),
+        ["asset_type", "metric"],
+    ].drop_duplicates()
+    if not invalid_scopes.empty:
+        raise ValueError(
+            f"经营指标不适用于对应资产类型: {invalid_scopes.to_dict('records')}"
+        )
+
     document_urls = set(documents["source_url"])
     if not set(metrics["source_url"]).issubset(document_urls):
         raise ValueError("经营指标存在未登记的来源 URL")
@@ -533,3 +609,72 @@ def audit_cross_asset_seed_database() -> dict[str, object]:
         load_metric_definitions(DEFAULT_DEFINITIONS_PATH),
         load_asset_metric_requirements(DEFAULT_REQUIREMENTS_PATH),
     )
+
+
+def audit_energy_seed_database() -> dict[str, object]:
+    """审计首批风电、光伏、水电和燃气发电资产级经营样本。"""
+
+    empty_distributions = pd.DataFrame(
+        columns=["symbol", "ex_date", "cash_per_unit", "announcement_date", "source_url"]
+    )
+    empty_distributions["ex_date"] = pd.to_datetime(empty_distributions["ex_date"])
+    return audit_research_database(
+        load_reit_master(DEFAULT_MASTER_PATH),
+        load_assets(DEFAULT_ENERGY_ASSETS_PATH),
+        load_operating_metrics(DEFAULT_ENERGY_METRICS_PATH),
+        empty_distributions,
+        load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+        load_metric_definitions(DEFAULT_DEFINITIONS_PATH),
+        load_asset_metric_requirements(DEFAULT_REQUIREMENTS_PATH),
+    )
+
+
+def audit_wind_panel_database() -> dict[str, object]:
+    """审计 508028 海上风电连续季度经营面板。"""
+
+    empty_distributions = pd.DataFrame(
+        columns=["symbol", "ex_date", "cash_per_unit", "announcement_date", "source_url"]
+    )
+    empty_distributions["ex_date"] = pd.to_datetime(empty_distributions["ex_date"])
+    assets = load_assets(DEFAULT_ENERGY_ASSETS_PATH)
+    assets = assets.loc[assets["symbol"].eq("508028")].reset_index(drop=True)
+    documents = load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH)
+    documents = documents.loc[documents["symbol"].eq("508028")].reset_index(drop=True)
+    return audit_research_database(
+        load_reit_master(DEFAULT_MASTER_PATH),
+        assets,
+        load_operating_metrics(DEFAULT_WIND_METRICS_PATH),
+        empty_distributions,
+        documents,
+        load_metric_definitions(DEFAULT_DEFINITIONS_PATH),
+        load_asset_metric_requirements(DEFAULT_REQUIREMENTS_PATH),
+    )
+
+
+def export_energy_seed_database(output_dir: str | Path) -> dict[str, Path]:
+    """导出能源样本的时点版本和核心指标覆盖矩阵。"""
+
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    assets = load_assets(DEFAULT_ENERGY_ASSETS_PATH)
+    metrics = load_operating_metrics(DEFAULT_ENERGY_METRICS_PATH)
+    documents = load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH)
+    requirements = load_asset_metric_requirements(DEFAULT_REQUIREMENTS_PATH)
+    versions = build_observation_versions(metrics, documents)
+    coverage = build_asset_type_coverage(assets, metrics, requirements)
+    wind_metrics = load_operating_metrics(DEFAULT_WIND_METRICS_PATH)
+    wind_documents = documents.loc[documents["symbol"].eq("508028")]
+    wind_assets = assets.loc[assets["symbol"].eq("508028")]
+    wind_versions = build_observation_versions(wind_metrics, wind_documents)
+    wind_coverage = build_asset_type_coverage(wind_assets, wind_metrics, requirements)
+    paths = {
+        "energy_observation_versions": output / "energy_observation_versions.csv",
+        "energy_core_metric_coverage": output / "energy_core_metric_coverage.csv",
+        "wind_observation_versions": output / "508028_observation_versions.csv",
+        "wind_core_metric_coverage": output / "508028_core_metric_coverage.csv",
+    }
+    versions.to_csv(paths["energy_observation_versions"], index=False)
+    coverage.to_csv(paths["energy_core_metric_coverage"], index=False)
+    wind_versions.to_csv(paths["wind_observation_versions"], index=False)
+    wind_coverage.to_csv(paths["wind_core_metric_coverage"], index=False)
+    return paths

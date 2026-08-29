@@ -1,0 +1,4 @@
+event_id,symbol,asset_id,event_type,event_start,event_end,date_precision,duration_days,publication_date,source_url,verification_status,description
+508096_expansion_20251225,508096,,asset_acquisition,2025-12-25,,day,,2026-07-21,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508096_20260721_BTD8.pdf,human_verified,第一次定向扩募购入苏家河口和松山河口两项水电资产；报告说明2025年12月25日完成扩募且12月26日完成股权转让
+508028_grid_outage_2025Q3,508028,binhai_h1_h2,external_grid_outage,2025-09-01,2025-09-30,month,14,2025-10-28,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2025-10-28/508028_20251028_036Z.pdf,single_pass_reviewed,报告仅披露2025年9月配合电网线路工程停机14天；起止日未知所以按月份精度记录
+508028_tariff_regime_20260101,508028,binhai_h1_h2,tariff_regime_change,2026-01-01,,day,,2026-07-21,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508028_20260721_W0FA.pdf,human_verified,自2026年1月1日起全电量参与电力市场交易；国补和机制电价仍按适用规则结算
