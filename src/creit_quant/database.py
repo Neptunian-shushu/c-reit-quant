@@ -33,6 +33,9 @@ DEFAULT_SOLAR_HYDRO_METRICS_PATH = (
 DEFAULT_GAS_METRICS_PATH = ROOT / "data" / "samples" / "180401_quarterly_operating_metrics.csv"
 DEFAULT_ENERGY_EVENTS_PATH = ROOT / "data" / "samples" / "energy_asset_events.csv"
 DEFAULT_PANEL_REVIEWS_PATH = ROOT / "data" / "samples" / "panel_quality_reviews.csv"
+DEFAULT_ANNUAL_RECONCILIATIONS_PATH = (
+    ROOT / "data" / "samples" / "panel_annual_reconciliations.csv"
+)
 
 OBSERVATION_KEY = ["symbol", "asset_id", "period_end", "metric"]
 
@@ -263,6 +266,151 @@ def audit_panel_reviews(
         "reviewed_documents": len(joined),
         "single_pass_documents": int(joined["review_status"].eq("single_pass").sum()),
         "double_checked_documents": int(joined["review_status"].eq("double_checked").sum()),
+    }
+
+
+def load_annual_reconciliations(
+    path: str | Path = DEFAULT_ANNUAL_RECONCILIATIONS_PATH,
+) -> pd.DataFrame:
+    """读取季度面板与正式年报之间的年度勾稽记录。"""
+
+    frame = _read_table(
+        path,
+        {
+            "symbol",
+            "asset_id",
+            "fiscal_year",
+            "metric",
+            "aggregation_method",
+            "quarterly_value",
+            "annual_value",
+            "unit",
+            "absolute_difference",
+            "relative_difference_pct",
+            "status",
+            "annual_publication_date",
+            "annual_source_url",
+            "reviewed_at",
+        },
+        name="年度勾稽表",
+    )
+    key = ["symbol", "asset_id", "fiscal_year", "metric"]
+    if frame.duplicated(key).any():
+        raise ValueError("年度勾稽记录自然键不能重复")
+    methods = {
+        "sum",
+        "settled_electricity_weighted_average",
+        "fuel_consumption_weighted_average",
+    }
+    statuses = {"exact", "within_rounding", "annual_true_up"}
+    if not set(frame["aggregation_method"]).issubset(methods):
+        raise ValueError("年度勾稽表包含未知聚合方法")
+    if not set(frame["status"]).issubset(statuses):
+        raise ValueError("年度勾稽表包含未知状态")
+    numeric = [
+        "fiscal_year",
+        "quarterly_value",
+        "annual_value",
+        "absolute_difference",
+        "relative_difference_pct",
+    ]
+    for column in numeric:
+        frame[column] = pd.to_numeric(frame[column], errors="raise")
+    if frame[["absolute_difference", "relative_difference_pct"]].lt(0).any().any():
+        raise ValueError("年度勾稽差异必须使用非负绝对值")
+    calculated_difference = (frame["annual_value"] - frame["quarterly_value"]).abs()
+    if (calculated_difference - frame["absolute_difference"]).abs().gt(1e-6).any():
+        raise ValueError("年度勾稽绝对差异与季度值、年报值不一致")
+    nonzero_annual = frame["annual_value"].ne(0)
+    calculated_relative = (
+        calculated_difference.loc[nonzero_annual]
+        / frame.loc[nonzero_annual, "annual_value"].abs()
+        * 100
+    )
+    if (
+        calculated_relative - frame.loc[nonzero_annual, "relative_difference_pct"]
+    ).abs().gt(1e-7).any():
+        raise ValueError("年度勾稽相对差异与季度值、年报值不一致")
+    if frame.loc[~nonzero_annual, "relative_difference_pct"].ne(0).any():
+        raise ValueError("年报值为零时年度勾稽相对差异必须为零")
+    exact = frame["status"].eq("exact")
+    if frame.loc[exact, "absolute_difference"].gt(1e-8).any():
+        raise ValueError("标记 exact 的年度勾稽记录存在非零差异")
+    frame["annual_publication_date"] = pd.to_datetime(
+        frame["annual_publication_date"], errors="raise"
+    )
+    frame["reviewed_at"] = pd.to_datetime(frame["reviewed_at"], errors="raise")
+    return frame.sort_values(key).reset_index(drop=True)
+
+
+def audit_annual_reconciliations(
+    reconciliations: pd.DataFrame,
+    metrics: pd.DataFrame,
+    documents: pd.DataFrame,
+) -> dict[str, int]:
+    """重算季度聚合并检查年报来源、单位和勾稽状态。"""
+
+    document_lookup = documents.set_index("source_url")
+    if not set(reconciliations["annual_source_url"]).issubset(document_lookup.index):
+        raise ValueError("年度勾稽表存在未登记的年报来源")
+    linked = reconciliations.join(
+        document_lookup[["symbol", "period_end", "publication_date", "document_type"]],
+        on="annual_source_url",
+        rsuffix="_document",
+        validate="many_to_one",
+    )
+    mismatch = (
+        linked["symbol"] != linked["symbol_document"]
+    ) | (
+        linked["annual_publication_date"] != linked["publication_date"]
+    ) | (~linked["document_type"].eq("annual_report")) | (
+        linked["period_end"].dt.year != linked["fiscal_year"]
+    )
+    if mismatch.any():
+        raise ValueError("年度勾稽记录与年报来源的证券、年度或发布日期不一致")
+
+    rows: list[dict[str, object]] = []
+    for row in reconciliations.itertuples(index=False):
+        group = metrics.loc[
+            metrics["symbol"].eq(row.symbol)
+            & metrics["asset_id"].eq(row.asset_id)
+            & metrics["period_end"].dt.year.eq(row.fiscal_year)
+            & metrics["publication_date"].le(row.annual_publication_date)
+        ].copy()
+        group = group.sort_values("publication_date").drop_duplicates(
+            OBSERVATION_KEY, keep="last"
+        )
+        if row.aggregation_method == "sum":
+            values = group.loc[group["metric"].eq(row.metric), "value"]
+            calculated = float(values.sum())
+        else:
+            weight_metric = (
+                "settled_electricity"
+                if row.aggregation_method == "settled_electricity_weighted_average"
+                else "fuel_consumption"
+            )
+            wide = group.pivot(index="period_end", columns="metric", values="value")
+            if row.metric not in wide or weight_metric not in wide:
+                raise ValueError("年度勾稽缺少加权平均所需季度指标")
+            valid = wide.dropna(subset=[row.metric, weight_metric])
+            calculated = float(
+                (valid[row.metric] * valid[weight_metric]).sum()
+                / valid[weight_metric].sum()
+            )
+        tolerance = 1e-6
+        if abs(calculated - float(row.quarterly_value)) > tolerance:
+            raise ValueError(
+                "年度勾稽表的季度聚合值无法由经营面板重算: "
+                f"{row.symbol}/{row.asset_id}/{row.metric} "
+                f"calculated={calculated}, recorded={row.quarterly_value}"
+            )
+        rows.append({"status": row.status})
+    status = pd.DataFrame(rows)["status"]
+    return {
+        "reconciliations": len(reconciliations),
+        "exact": int(status.eq("exact").sum()),
+        "within_rounding": int(status.eq("within_rounding").sum()),
+        "annual_true_up": int(status.eq("annual_true_up").sum()),
     }
 
 
@@ -779,11 +927,16 @@ def export_energy_seed_database(output_dir: str | Path) -> dict[str, Path]:
         "energy_core_metric_coverage": output / "energy_core_metric_coverage.csv",
         "wind_observation_versions": output / "508028_observation_versions.csv",
         "wind_core_metric_coverage": output / "508028_core_metric_coverage.csv",
+        "energy_annual_reconciliations": output
+        / "energy_annual_reconciliations.csv",
     }
     versions.to_csv(paths["energy_observation_versions"], index=False)
     coverage.to_csv(paths["energy_core_metric_coverage"], index=False)
     wind_versions.to_csv(paths["wind_observation_versions"], index=False)
     wind_coverage.to_csv(paths["wind_core_metric_coverage"], index=False)
+    load_annual_reconciliations().to_csv(
+        paths["energy_annual_reconciliations"], index=False
+    )
     for symbol, metrics_path, label in [
         ("508096", DEFAULT_SOLAR_HYDRO_METRICS_PATH, "solar_hydro"),
         ("180401", DEFAULT_GAS_METRICS_PATH, "gas"),

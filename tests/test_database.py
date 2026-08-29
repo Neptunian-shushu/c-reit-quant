@@ -7,6 +7,7 @@ from creit_quant.database import (
     audit_energy_seed_database,
     audit_gas_panel_database,
     audit_asset_events,
+    audit_annual_reconciliations,
     audit_panel_reviews,
     audit_solar_hydro_panel_database,
     audit_wind_panel_database,
@@ -16,7 +17,9 @@ from creit_quant.database import (
     build_metric_coverage,
     build_observation_versions,
     export_default_pilot_database,
+    export_energy_seed_database,
     load_asset_metric_requirements,
+    load_annual_reconciliations,
     load_asset_events,
     load_assets,
     load_metric_definitions,
@@ -24,6 +27,7 @@ from creit_quant.database import (
     load_panel_reviews,
     load_reit_master,
     DEFAULT_CROSS_DOCUMENTS_PATH,
+    DEFAULT_ANNUAL_RECONCILIATIONS_PATH,
     DEFAULT_ENERGY_ASSETS_PATH,
     DEFAULT_ENERGY_DOCUMENTS_PATH,
     DEFAULT_ENERGY_METRICS_PATH,
@@ -233,6 +237,46 @@ def test_solar_hydro_annual_revision_is_point_in_time_not_overwrite():
         & after["metric"].eq("settled_electricity")
     )
     assert after.loc[key, "value"].item() == pytest.approx(600)
+
+
+def test_2025_energy_panels_reconcile_to_annual_reports():
+    metrics = pd.concat(
+        [
+            load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH),
+            load_operating_metrics(DEFAULT_GAS_METRICS_PATH),
+        ],
+        ignore_index=True,
+    )
+    result = audit_annual_reconciliations(
+        load_annual_reconciliations(DEFAULT_ANNUAL_RECONCILIATIONS_PATH),
+        metrics,
+        load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+    )
+
+    assert result == {
+        "reconciliations": 27,
+        "exact": 16,
+        "within_rounding": 10,
+        "annual_true_up": 1,
+    }
+
+
+def test_annual_reconciliation_rejects_inconsistent_difference(tmp_path):
+    reconciliations = pd.read_csv(DEFAULT_ANNUAL_RECONCILIATIONS_PATH)
+    reconciliations.loc[0, "absolute_difference"] += 1
+    path = tmp_path / "reconciliations.csv"
+    reconciliations.to_csv(path, index=False)
+
+    with pytest.raises(ValueError, match="绝对差异"):
+        load_annual_reconciliations(path)
+
+
+def test_energy_export_includes_annual_reconciliations(tmp_path):
+    paths = export_energy_seed_database(tmp_path)
+
+    assert "energy_annual_reconciliations" in paths
+    exported = pd.read_csv(paths["energy_annual_reconciliations"])
+    assert len(exported) == 27
 
 
 def test_energy_symbols_have_continuous_hashed_report_sequences():

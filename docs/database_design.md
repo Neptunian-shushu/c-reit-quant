@@ -16,6 +16,7 @@
 | `announcement_catalog` | `data/snapshots/reit_announcement_catalog.csv` | 沪深交易所官方公告元数据和规则分类候选，不等同于已核验来源 |
 | `operating_metrics` | `data/samples/508026_quarterly_operating_metrics.csv` | long-format 经营观测及其发布时间、来源和原口径备注 |
 | `panel_quality_reviews` | `data/samples/panel_quality_reviews.csv` | 纵向面板来源的人工复核状态、日期和备注 |
+| `panel_annual_reconciliations` | `data/samples/panel_annual_reconciliations.csv` | 季度聚合与正式年报的差异、原因和处理状态 |
 | `distributions` | `data/samples/508026_distributions.csv` | 除息日、每份分派和公告来源 |
 
 能源扩面另使用`energy_asset_master.csv`、`energy_operating_metrics.csv`和`energy_source_documents.csv`；508028、508096和180401的连续时间序列分别单独维护，避免把单期横截面种子误认为完整历史面板。
