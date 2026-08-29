@@ -96,6 +96,20 @@
 
 历史快照使用半开区间：`valid_from <= as_of < valid_to`。因此在更正公告发布当天，快照切换到新版本。
 
+### `prelisting_operating_metrics`
+
+粒度：每项资产、实际覆盖期间和指标一行。主键：`symbol + asset_id + period_start + period_end + metric`。
+
+`period_type`区分完整年度和`year_to_date`，禁止把2023年1—9月当作全年。`availability_class=pre_listing_disclosed_at_ipo`表示经营事实发生得更早，但市场直到招募说明书发布日期才可获取；回测只能从`publication_date`开始使用。
+
+### `hydrology_mapping`
+
+粒度：每个与底层资产有关的水文实体一行。`mapping_type`包括天气代理点、集水区、上游水库和河流。坐标、流域面积和调节库容各自保留来源精度；公开来源没有坐标或多边形时保持为空，不能凭地图目测填充。
+
+### `weather_features`
+
+粒度：每个天气点、自然季度和数据类型一行。当前508026快照使用`data_kind=ex_post_reanalysis_era5`，保存Open-Meteo返回的ERA5网格中心、模型参数、抓取日和完整日历覆盖。该表适合解释性研究，不包含forecast issue time，不能用于严格交易回测。
+
 ### `asset_events`
 
 粒度：每项会改变资产边界或经营可比性的事件一行。当前覆盖扩募购入资产、外部电网停机和电价机制变化。只知道月份而不知道具体日期时，必须保存`date_precision=month`，不能虚构日级起止时间。
@@ -134,5 +148,9 @@
 - `operating_observation_versions.csv`：完整版本历史；
 - `core_metric_coverage.csv`：按资产类型核心要求生成的覆盖矩阵；
 - `operating_observations_as_of.csv`：指定历史日期的可见信息快照。
+- `508026_prelisting_operating_metrics.csv`：上市前年度／年初至今经营历史；
+- `508026_hydrology_mapping.csv`：水文实体关系；
+- `508026_quarterly_weather_reanalysis.csv`：固定ERA5季度天气快照；
+- `508026_prelisting_annual_weather_panel.csv`：完整年度经营指标和点位天气连接表。
 
 这些文件属于可重复生成的分析数据，不作为人工维护源表，也不提交仓库。

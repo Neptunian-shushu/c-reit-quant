@@ -40,6 +40,24 @@ def test_historical_weather_uses_reanalysis_endpoint(mock_get):
 
 
 @patch("creit_quant.weather.requests.get")
+def test_historical_weather_can_pin_reanalysis_model(mock_get):
+    mock_get.return_value = _response(
+        {"daily": {"time": ["2024-01-01"], "precipitation_sum": [1.2]}}
+    )
+
+    fetch_historical_weather(
+        29.0,
+        101.5,
+        "2024-01-01",
+        "2024-01-01",
+        ["precipitation_sum"],
+        model="era5",
+    )
+
+    assert mock_get.call_args.kwargs["params"]["models"] == "era5"
+
+
+@patch("creit_quant.weather.requests.get")
 def test_historical_forecast_uses_distinct_forecast_archive(mock_get):
     mock_get.return_value = _response(
         {"hourly": {"time": ["2024-01-01T00:00"], "precipitation": [0.4]}}

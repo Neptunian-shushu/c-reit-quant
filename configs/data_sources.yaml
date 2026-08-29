@@ -27,11 +27,12 @@ alternative_data:
     endpoints:
       reanalysis: https://archive-api.open-meteo.com/v1/archive
       historical_forecast: https://historical-forecast-api.open-meteo.com/v1/forecast
-    warning: "The stitched historical forecast is not a fixed-lead forecast vintage. Use archived runs for strict point-in-time tests."
+    reanalysis_model: era5
+    warning: "长期再分析面板必须固定 models=era5，不能使用可能跨期换模的默认 best-match。拼接历史预报也不是固定提前期的预测版本；严格时点回测应保存历史运行批次。"
   era5:
     status: validated_api
     scope: [historical_weather_reanalysis]
-    warning: "Use historical forecasts, not reanalysis, for strict tradable backtests."
+    warning: "ERA5 是事后再分析，只适合解释研究；严格可交易回测必须使用当时真实可得的历史预报。"
   baidu_traffic:
     status: validated_api_exists
     scope: [current_traffic_conditions]

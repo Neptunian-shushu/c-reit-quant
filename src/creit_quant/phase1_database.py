@@ -4,8 +4,16 @@ import argparse
 
 import pandas as pd
 
+from creit_quant.hydropower import (
+    audit_hydropower_extension,
+    load_hydrology_mapping,
+    load_hydropower_metrics,
+    load_hydropower_weather_features,
+    load_prelisting_hydropower_metrics,
+)
 from creit_quant.database import (
     DEFAULT_CROSS_DOCUMENTS_PATH,
+    DEFAULT_DOCUMENTS_PATH,
     DEFAULT_ENERGY_DOCUMENTS_PATH,
     audit_periodic_document_sequences,
     audit_cross_asset_seed_database,
@@ -59,6 +67,19 @@ def main() -> None:
         f"人工核验 {audit['verified_documents']} 份"
     )
     print(f"现金分派: {audit['distributions']} 条")
+    hydro_extension = audit_hydropower_extension(
+        load_prelisting_hydropower_metrics(),
+        load_hydrology_mapping(),
+        load_hydropower_weather_features(),
+        load_source_documents(DEFAULT_DOCUMENTS_PATH),
+    )
+    print(
+        "508026 上市前／水文扩展: "
+        f"经营观测 {hydro_extension['prelisting_observations']} 条，"
+        f"完整年度 {hydro_extension['complete_annual_years']} 年，"
+        f"水文关系 {hydro_extension['hydrology_mappings']} 条，"
+        f"再分析天气 {hydro_extension['weather_quarters']} 个季度"
+    )
     cross = audit_cross_asset_seed_database()
     print("\n跨资产数据库种子审计通过")
     print(f"证券 / 资产: {cross['securities']} / {cross['assets']}")
@@ -147,10 +168,17 @@ def main() -> None:
                 load_operating_metrics(DEFAULT_WIND_METRICS_PATH),
                 load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH),
                 load_operating_metrics(DEFAULT_GAS_METRICS_PATH),
+                load_hydropower_metrics(),
             ],
             ignore_index=True,
         ),
-        load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+        pd.concat(
+            [
+                load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+                load_source_documents(DEFAULT_DOCUMENTS_PATH),
+            ],
+            ignore_index=True,
+        ),
     )
     print(
         f"2025年季度—年报勾稽: {annual_reconciliation['reconciliations']} 项，"

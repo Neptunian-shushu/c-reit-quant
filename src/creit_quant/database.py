@@ -9,8 +9,12 @@ import pandas as pd
 from creit_quant.hydropower import (
     DEFAULT_ASSET_PATH,
     DEFAULT_METRICS_PATH,
+    build_prelisting_weather_panel,
+    load_hydrology_mapping,
     load_hydropower_asset,
     load_hydropower_metrics,
+    load_hydropower_weather_features,
+    load_prelisting_hydropower_metrics,
 )
 from creit_quant.documents import PERIODIC_DOCUMENT_TYPES
 from creit_quant.strategy import DEFAULT_DISTRIBUTIONS_PATH, load_distributions
@@ -800,7 +804,7 @@ def export_default_pilot_database(
     *,
     as_of: str | pd.Timestamp | None = None,
 ) -> dict[str, Path]:
-    """构建并导出 508026 规范观测版本、时点快照和核心覆盖矩阵。"""
+    """导出508026季度版本、上市前年度数据、水文映射和再分析天气。"""
 
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -810,13 +814,28 @@ def export_default_pilot_database(
     requirements = load_asset_metric_requirements(DEFAULT_REQUIREMENTS_PATH)
     versions = build_observation_versions(metrics, documents)
     coverage = build_asset_type_coverage(assets, metrics, requirements)
+    prelisting = load_prelisting_hydropower_metrics()
+    hydrology = load_hydrology_mapping()
+    weather = load_hydropower_weather_features()
+    annual_weather = build_prelisting_weather_panel(prelisting, weather)
 
     paths = {
         "observation_versions": output / "operating_observation_versions.csv",
         "core_metric_coverage": output / "core_metric_coverage.csv",
+        "prelisting_operating_metrics": output
+        / "508026_prelisting_operating_metrics.csv",
+        "hydrology_mapping": output / "508026_hydrology_mapping.csv",
+        "quarterly_weather_reanalysis": output
+        / "508026_quarterly_weather_reanalysis.csv",
+        "prelisting_annual_weather_panel": output
+        / "508026_prelisting_annual_weather_panel.csv",
     }
     versions.to_csv(paths["observation_versions"], index=False)
     coverage.to_csv(paths["core_metric_coverage"], index=False)
+    prelisting.to_csv(paths["prelisting_operating_metrics"], index=False)
+    hydrology.to_csv(paths["hydrology_mapping"], index=False)
+    weather.to_csv(paths["quarterly_weather_reanalysis"], index=False)
+    annual_weather.to_csv(paths["prelisting_annual_weather_panel"], index=False)
     if as_of is not None:
         snapshot = select_observations_as_of(versions, as_of)
         snapshot.insert(0, "snapshot_as_of", pd.Timestamp(as_of))

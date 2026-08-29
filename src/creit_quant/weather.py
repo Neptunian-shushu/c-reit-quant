@@ -30,6 +30,7 @@ def _request_weather(
     variables: Sequence[str],
     frequency: str,
     timeout: float,
+    model: str | None = None,
 ) -> pd.DataFrame:
     params = {
         "latitude": latitude,
@@ -39,6 +40,8 @@ def _request_weather(
         frequency: ",".join(variables),
         "timezone": "Asia/Shanghai",
     }
+    if model:
+        params["models"] = model
     try:
         response = requests.get(url, params=params, timeout=timeout)
         response.raise_for_status()
@@ -71,11 +74,14 @@ def fetch_historical_weather(
     variables: Sequence[str] | None = None,
     *,
     timeout: float = 30,
+    model: str | None = None,
 ) -> pd.DataFrame:
     """Fetch daily historical/reanalysis weather from Open-Meteo.
 
     This is reconstructed ex-post weather suitable for explanatory analysis.
     It must not be treated as information known at a historical trading time.
+    Pin ``model`` (for example ``era5``) when building a long-lived panel so
+    Open-Meteo's default best-match selection cannot change model over time.
     """
 
     selected = tuple(variables or DEFAULT_HISTORICAL_VARIABLES)
@@ -90,6 +96,7 @@ def fetch_historical_weather(
         selected,
         "daily",
         timeout,
+        model,
     )
 
 

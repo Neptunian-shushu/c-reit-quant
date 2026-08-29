@@ -1,0 +1,5 @@
+symbol,asset_id,mapping_id,mapping_type,name,relation,latitude,longitude,coordinate_precision,basin_area_km2,regulating_capacity_10k_m3,source_url,source_note
+508026,wuyiqiao_1_5,wuyiqiao_asset_point,weather_proxy,五一桥水电站,底层资产点位天气代理,28.7125,101.6762,third_party_exact,,,https://www.gem.wiki/Wuyiqiao_hydroelectric_plant,仅作Open-Meteo点位代理；不是坝址以上流域质心
+508026,wuyiqiao_1_5,wuyiqiao_upstream_catchment,catchment,五一桥坝址以上集水区,直接控制来水,,,official_area_only,1642,,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2024-02-27/508026_20240227_RGPU.pdf,招募说明书披露坝址以上集水面积；公开材料未提供可复用流域边界
+508026,wuyiqiao_1_5,xigu_reservoir,upstream_reservoir,溪古水库,上游季调节水库,,,official_relation_only,,8634.4,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2024-02-27/508026_20240227_RGPU.pdf,招募说明书披露调节库容；可增加多年平均发电量5.3%；未用无来源坐标填充
+508026,wuyiqiao_1_5,jiulong_river,river,九龙河,雅砻江下游左岸一级支流,,,official_relation_only,3604,,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2024-02-27/508026_20240227_RGPU.pdf,招募说明书披露干流全长132公里及全流域面积约3604平方公里

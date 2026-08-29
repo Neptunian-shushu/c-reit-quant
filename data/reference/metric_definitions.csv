@@ -11,6 +11,9 @@ freight_vehicle_traffic,货车流量,toll_road,vehicles_per_day,quarterly,货车
 toll_revenue,通行费收入,toll_road,RMB,quarterly,含税与不含税口径必须区分
 power_generation,发电量,hydropower|wind|solar|gas_power|renewable,10k_kWh,quarterly,报告期实际发电量
 grid_connected_electricity,上网电量,hydropower|wind|solar|gas_power|renewable,10k_kWh,quarterly,送入电网或报告财务口径的售电量；不得与结算电量静默合并
+hydrological_generation_potential,来水可发电量,hydropower,10k_kWh,annual,由来水条件决定的理论可发电量；与实际发电量之差通常对应弃水电量
+curtailed_generation,弃水电量,hydropower,10k_kWh,annual,具备发电条件但因消纳或输电等原因未实际发出的电量
+average_inflow,平均来水量,hydropower,cubic_metres_per_second,annual,报告期天然来水或径流量平均值；需保留年均或月均口径
 utilization_hours,利用小时,hydropower|wind|solar|gas_power|renewable,hours,quarterly,有效发电小时或等效利用小时需保留原名称
 settled_electricity,结算电量,hydropower|wind|solar|gas_power|renewable,10k_kWh,quarterly,早期上网电量可能包含暂估数据
 settlement_tariff,结算电价,hydropower|wind|solar|gas_power|renewable,RMB_per_kWh,quarterly,需要标记含税状态

@@ -27,6 +27,7 @@ from creit_quant.database import (
     load_panel_reviews,
     load_reit_master,
     DEFAULT_CROSS_DOCUMENTS_PATH,
+    DEFAULT_DOCUMENTS_PATH,
     DEFAULT_ANNUAL_RECONCILIATIONS_PATH,
     DEFAULT_ENERGY_ASSETS_PATH,
     DEFAULT_ENERGY_DOCUMENTS_PATH,
@@ -48,8 +49,8 @@ def test_default_pilot_database_has_complete_relations():
     assert audit["securities"] == 6
     assert audit["assets"] == 1
     assert audit["operating_observations"] == 36
-    assert audit["source_documents"] == 11
-    assert audit["verified_documents"] == 11
+    assert audit["source_documents"] == 14
+    assert audit["verified_documents"] == 14
     assert audit["quarter_start"] == "2024Q2"
     assert audit["quarter_end"] == "2026Q2"
     assert audit["coverage_cells"] == 36
@@ -245,20 +246,27 @@ def test_2025_energy_panels_reconcile_to_annual_reports():
             load_operating_metrics(DEFAULT_WIND_METRICS_PATH),
             load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH),
             load_operating_metrics(DEFAULT_GAS_METRICS_PATH),
+            load_hydropower_metrics(),
         ],
         ignore_index=True,
     )
     result = audit_annual_reconciliations(
         load_annual_reconciliations(DEFAULT_ANNUAL_RECONCILIATIONS_PATH),
         metrics,
-        load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+        pd.concat(
+            [
+                load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+                load_source_documents(DEFAULT_DOCUMENTS_PATH),
+            ],
+            ignore_index=True,
+        ),
     )
 
     assert result == {
-        "reconciliations": 32,
-        "exact": 19,
-        "within_rounding": 11,
-        "annual_true_up": 1,
+        "reconciliations": 36,
+        "exact": 20,
+        "within_rounding": 12,
+        "annual_true_up": 3,
         "basis_difference": 1,
     }
 
@@ -280,10 +288,17 @@ def test_annual_reconciliation_requires_human_verified_report():
             load_operating_metrics(DEFAULT_WIND_METRICS_PATH),
             load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH),
             load_operating_metrics(DEFAULT_GAS_METRICS_PATH),
+            load_hydropower_metrics(),
         ],
         ignore_index=True,
     )
-    documents = load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH)
+    documents = pd.concat(
+        [
+            load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
+            load_source_documents(DEFAULT_DOCUMENTS_PATH),
+        ],
+        ignore_index=True,
+    )
     source = reconciliations.loc[0, "annual_source_url"]
     documents.loc[documents["source_url"].eq(source), "verification_status"] = (
         "metadata_verified"
@@ -298,7 +313,7 @@ def test_energy_export_includes_annual_reconciliations(tmp_path):
 
     assert "energy_annual_reconciliations" in paths
     exported = pd.read_csv(paths["energy_annual_reconciliations"])
-    assert len(exported) == 32
+    assert len(exported) == 36
 
 
 def test_energy_symbols_have_continuous_hashed_report_sequences():
@@ -419,6 +434,10 @@ def test_database_export_builds_versions_coverage_and_snapshot(tmp_path):
         "observation_versions",
         "core_metric_coverage",
         "point_in_time_snapshot",
+        "prelisting_operating_metrics",
+        "hydrology_mapping",
+        "quarterly_weather_reanalysis",
+        "prelisting_annual_weather_panel",
     }
     assert all(path.exists() for path in paths.values())
     snapshot = pd.read_csv(paths["point_in_time_snapshot"], dtype={"symbol": str})

@@ -20,6 +20,11 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fetch-weather", action="store_true", help="从 Open-Meteo 获取点位再分析天气")
+    parser.add_argument(
+        "--weather-model",
+        default="era5",
+        help="Open-Meteo固定历史模型；默认era5，避免best-match跨期模型切换",
+    )
     parser.add_argument("--out", default=None, help="可选的季度面板 CSV 输出路径")
     args = parser.parse_args()
 
@@ -44,7 +49,14 @@ def main() -> None:
                 float(asset["longitude"]),
                 start,
                 end,
-                ["precipitation_sum", "temperature_2m_mean"],
+                [
+                    "precipitation_sum",
+                    "rain_sum",
+                    "snowfall_sum",
+                    "temperature_2m_mean",
+                    "et0_fao_evapotranspiration",
+                ],
+                model=args.weather_model,
             )
         except WeatherAPIError as exc:
             raise SystemExit(f"天气获取失败，可稍后重试：{exc}") from exc
