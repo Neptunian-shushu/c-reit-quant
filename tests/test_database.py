@@ -5,7 +5,10 @@ from creit_quant.database import (
     audit_cross_asset_seed_database,
     audit_default_pilot_database,
     audit_energy_seed_database,
+    audit_gas_panel_database,
     audit_asset_events,
+    audit_panel_reviews,
+    audit_solar_hydro_panel_database,
     audit_wind_panel_database,
     audit_periodic_document_sequences,
     audit_research_database,
@@ -18,11 +21,15 @@ from creit_quant.database import (
     load_assets,
     load_metric_definitions,
     load_operating_metrics,
+    load_panel_reviews,
     load_reit_master,
     DEFAULT_CROSS_DOCUMENTS_PATH,
     DEFAULT_ENERGY_ASSETS_PATH,
     DEFAULT_ENERGY_DOCUMENTS_PATH,
     DEFAULT_ENERGY_METRICS_PATH,
+    DEFAULT_GAS_METRICS_PATH,
+    DEFAULT_PANEL_REVIEWS_PATH,
+    DEFAULT_SOLAR_HYDRO_METRICS_PATH,
     DEFAULT_WIND_METRICS_PATH,
     load_source_documents,
     select_observations_as_of,
@@ -122,6 +129,112 @@ def test_wind_snapshot_matches_same_period_in_longitudinal_panel():
     )
 
 
+def test_solar_hydro_panel_preserves_disclosure_break_and_partial_acquisition():
+    audit = audit_solar_hydro_panel_database()
+
+    assert audit["operating_observations"] == 146
+    assert audit["source_documents_used"] == 14
+    assert audit["quarter_start"] == "2023Q2"
+    assert audit["quarter_end"] == "2026Q2"
+    assert audit["coverage_cells"] == 128
+    assert audit["available_cells"] == 98
+
+    metrics = load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH)
+    early = metrics.loc[metrics["period_end"].lt(pd.Timestamp("2024-12-31"))]
+    assert set(early["metric"]) == {"settled_electricity", "settlement_tariff"}
+    partial = metrics.loc[
+        metrics["asset_id"].str.endswith("_hydro")
+        & metrics["period_end"].eq(pd.Timestamp("2025-12-31"))
+    ]
+    assert len(partial) == 15
+    assert partial["source_note"].str.contains("非完整季度").all()
+    assert audit["revised_observations"] == 3
+    assets = load_assets(DEFAULT_ENERGY_ASSETS_PATH).set_index("asset_id")
+    assert assets.loc["sujiahekou_hydro", "installed_capacity_mw"] == 315
+    assert assets.loc["songshanhekou_hydro", "installed_capacity_mw"] == 168
+
+
+def test_gas_panel_has_continuous_settled_electricity_and_honest_early_gaps():
+    audit = audit_gas_panel_database()
+
+    assert audit["operating_observations"] == 75
+    assert audit["source_documents_used"] == 16
+    assert audit["quarter_start"] == "2022Q3"
+    assert audit["quarter_end"] == "2026Q2"
+    assert audit["coverage_cells"] == 64
+    assert audit["available_cells"] == 37
+
+    metrics = load_operating_metrics(DEFAULT_GAS_METRICS_PATH)
+    settled = metrics.loc[metrics["metric"].eq("settled_electricity")]
+    assert len(settled) == 16
+    assert settled["period_end"].dt.to_period("Q").tolist() == list(
+        pd.period_range("2022Q3", "2026Q2", freq="Q")
+    )
+    assert metrics["metric"].eq("fuel_consumption").sum() == 15
+    assert not metrics.loc[
+        metrics["period_end"].lt(pd.Timestamp("2024-12-31")), "metric"
+    ].eq("settlement_tariff").any()
+
+
+def test_latest_energy_snapshots_match_longitudinal_panels():
+    snapshot = load_operating_metrics(DEFAULT_ENERGY_METRICS_PATH)
+    for symbol, path in [
+        ("508096", DEFAULT_SOLAR_HYDRO_METRICS_PATH),
+        ("180401", DEFAULT_GAS_METRICS_PATH),
+    ]:
+        columns = ["asset_id", "metric", "value", "unit"]
+        left = snapshot.loc[snapshot["symbol"].eq(symbol), columns]
+        panel = load_operating_metrics(path)
+        right = panel.loc[
+            panel["period_end"].eq(pd.Timestamp("2026-06-30")), columns
+        ]
+        common = set(left["metric"]).intersection(right["metric"])
+        pd.testing.assert_frame_equal(
+            left.loc[left["metric"].isin(common)]
+            .sort_values(["asset_id", "metric"])
+            .reset_index(drop=True),
+            right.loc[right["metric"].isin(common)]
+            .sort_values(["asset_id", "metric"])
+            .reset_index(drop=True),
+        )
+
+
+def test_all_longitudinal_energy_sources_have_review_ledger_entries():
+    reviews = load_panel_reviews(DEFAULT_PANEL_REVIEWS_PATH)
+    expected = {
+        "508028_quarterly": (DEFAULT_WIND_METRICS_PATH, 13),
+        "508096_quarterly": (DEFAULT_SOLAR_HYDRO_METRICS_PATH, 14),
+        "180401_quarterly": (DEFAULT_GAS_METRICS_PATH, 16),
+    }
+    for panel_name, (path, count) in expected.items():
+        result = audit_panel_reviews(
+            load_operating_metrics(path), reviews, panel_name=panel_name
+        )
+        assert result["reviewed_documents"] == count
+        assert result["double_checked_documents"] == 1
+
+
+def test_solar_hydro_annual_revision_is_point_in_time_not_overwrite():
+    metrics = load_operating_metrics(DEFAULT_SOLAR_HYDRO_METRICS_PATH)
+    documents = load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH)
+    versions = build_observation_versions(metrics, documents)
+
+    before = select_observations_as_of(versions, "2026-02-01")
+    after = select_observations_as_of(versions, "2026-04-01")
+    key = (
+        before["asset_id"].eq("songshanhekou_hydro")
+        & before["period_end"].eq(pd.Timestamp("2025-12-31"))
+        & before["metric"].eq("settled_electricity")
+    )
+    assert before.loc[key, "value"].item() == pytest.approx(700)
+    key = (
+        after["asset_id"].eq("songshanhekou_hydro")
+        & after["period_end"].eq(pd.Timestamp("2025-12-31"))
+        & after["metric"].eq("settled_electricity")
+    )
+    assert after.loc[key, "value"].item() == pytest.approx(600)
+
+
 def test_energy_symbols_have_continuous_hashed_report_sequences():
     sequences = audit_periodic_document_sequences(
         load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
@@ -149,11 +262,14 @@ def test_energy_asset_events_preserve_date_precision_and_relations():
         load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH),
     )
 
-    assert audit == {"events": 3, "asset_level_events": 2, "symbol_level_events": 1}
+    assert audit == {"events": 6, "asset_level_events": 5, "symbol_level_events": 1}
     outage = events.set_index("event_id").loc["508028_grid_outage_2025Q3"]
     assert outage["date_precision"] == "month"
     assert outage["duration_days"] == 14
     assert "起止日未知" in outage["description"]
+    yulin = events.set_index("event_id").loc["508096_yulin_grid_maintenance_20241008"]
+    assert yulin["date_precision"] == "day"
+    assert yulin["duration_days"] == 12
 
 
 def test_expansion_symbols_have_continuous_hashed_report_sequences():

@@ -27,7 +27,12 @@ DEFAULT_ENERGY_ASSETS_PATH = ROOT / "data" / "samples" / "energy_asset_master.cs
 DEFAULT_ENERGY_METRICS_PATH = ROOT / "data" / "samples" / "energy_operating_metrics.csv"
 DEFAULT_ENERGY_DOCUMENTS_PATH = ROOT / "data" / "samples" / "energy_source_documents.csv"
 DEFAULT_WIND_METRICS_PATH = ROOT / "data" / "samples" / "508028_quarterly_operating_metrics.csv"
+DEFAULT_SOLAR_HYDRO_METRICS_PATH = (
+    ROOT / "data" / "samples" / "508096_quarterly_operating_metrics.csv"
+)
+DEFAULT_GAS_METRICS_PATH = ROOT / "data" / "samples" / "180401_quarterly_operating_metrics.csv"
 DEFAULT_ENERGY_EVENTS_PATH = ROOT / "data" / "samples" / "energy_asset_events.csv"
+DEFAULT_PANEL_REVIEWS_PATH = ROOT / "data" / "samples" / "panel_quality_reviews.csv"
 
 OBSERVATION_KEY = ["symbol", "asset_id", "period_end", "metric"]
 
@@ -143,6 +148,16 @@ def load_assets(path: str | Path) -> pd.DataFrame:
     )
     if frame.duplicated(["symbol", "asset_id"]).any():
         raise ValueError("底层资产表 symbol/asset_id 必须唯一")
+    if "asset_effective_from" in frame:
+        frame["asset_effective_from"] = pd.to_datetime(
+            frame["asset_effective_from"], errors="raise"
+        )
+    if "installed_capacity_mw" in frame:
+        frame["installed_capacity_mw"] = pd.to_numeric(
+            frame["installed_capacity_mw"], errors="coerce"
+        )
+        if frame["installed_capacity_mw"].dropna().le(0).any():
+            raise ValueError("已披露装机容量必须大于 0")
     return frame
 
 
@@ -199,7 +214,56 @@ def load_asset_events(path: str | Path = DEFAULT_ENERGY_EVENTS_PATH) -> pd.DataF
         raise ValueError("资产事件结束日期不能早于开始日期")
     if not set(frame["date_precision"]).issubset({"day", "month", "quarter"}):
         raise ValueError("资产事件日期精度只能是 day、month 或 quarter")
+    if (frame["publication_date"] < frame["event_start"]).any():
+        raise ValueError("资产事件发布日期不能早于事件开始日期")
     return frame.sort_values(["event_start", "event_id"]).reset_index(drop=True)
+
+
+def load_panel_reviews(path: str | Path = DEFAULT_PANEL_REVIEWS_PATH) -> pd.DataFrame:
+    """读取季度面板的人工复核台账。"""
+
+    frame = _read_table(
+        path,
+        {
+            "symbol",
+            "period_end",
+            "panel_name",
+            "source_url",
+            "review_status",
+            "reviewed_at",
+        },
+        name="面板复核台账",
+    )
+    if frame.duplicated(["panel_name", "source_url"]).any():
+        raise ValueError("同一面板的来源文档复核记录不能重复")
+    allowed = {"single_pass", "double_checked"}
+    if not set(frame["review_status"]).issubset(allowed):
+        raise ValueError("review_status 只能是 single_pass 或 double_checked")
+    frame["period_end"] = pd.to_datetime(frame["period_end"], errors="raise")
+    frame["reviewed_at"] = pd.to_datetime(frame["reviewed_at"], errors="raise")
+    return frame.sort_values(["symbol", "period_end", "panel_name"]).reset_index(drop=True)
+
+
+def audit_panel_reviews(
+    metrics: pd.DataFrame, reviews: pd.DataFrame, *, panel_name: str
+) -> dict[str, int]:
+    """确认面板使用的每份来源均有复核记录，且证券和报告期一致。"""
+
+    used = metrics[["symbol", "period_end", "source_url"]].drop_duplicates()
+    ledger = reviews.loc[reviews["panel_name"].eq(panel_name)]
+    joined = used.merge(
+        ledger,
+        on=["symbol", "period_end", "source_url"],
+        how="left",
+        validate="one_to_one",
+    )
+    if joined["review_status"].isna().any():
+        raise ValueError(f"{panel_name} 存在未登记人工复核的来源文档")
+    return {
+        "reviewed_documents": len(joined),
+        "single_pass_documents": int(joined["review_status"].eq("single_pass").sum()),
+        "double_checked_documents": int(joined["review_status"].eq("double_checked").sum()),
+    }
 
 
 def audit_asset_events(
@@ -449,8 +513,11 @@ def audit_research_database(
         raise ValueError(f"经营指标单位与指标字典不一致: {bad_units.to_dict('records')}")
 
     metric_scopes = definitions.set_index("metric")["asset_scope"].to_dict()
+    asset_columns = ["symbol", "asset_id", "asset_type"]
+    if "asset_effective_from" in assets:
+        asset_columns.append("asset_effective_from")
     typed_metrics = metrics.merge(
-        assets[["symbol", "asset_id", "asset_type"]],
+        assets[asset_columns],
         on=["symbol", "asset_id"],
         how="left",
         validate="many_to_one",
@@ -468,6 +535,12 @@ def audit_research_database(
         raise ValueError(
             f"经营指标不适用于对应资产类型: {invalid_scopes.to_dict('records')}"
         )
+    if "asset_effective_from" in typed_metrics:
+        predates_asset = typed_metrics["period_end"].lt(
+            typed_metrics["asset_effective_from"]
+        )
+        if predates_asset.any():
+            raise ValueError("经营指标报告期末不能早于资产纳入日期")
 
     document_urls = set(documents["source_url"])
     if not set(metrics["source_url"]).issubset(document_urls):
@@ -651,8 +724,42 @@ def audit_wind_panel_database() -> dict[str, object]:
     )
 
 
+def _audit_energy_panel_database(symbol: str, metrics_path: str | Path) -> dict[str, object]:
+    """按单只能源 REIT 审计连续季度经营面板。"""
+
+    empty_distributions = pd.DataFrame(
+        columns=["symbol", "ex_date", "cash_per_unit", "announcement_date", "source_url"]
+    )
+    empty_distributions["ex_date"] = pd.to_datetime(empty_distributions["ex_date"])
+    assets = load_assets(DEFAULT_ENERGY_ASSETS_PATH)
+    assets = assets.loc[assets["symbol"].eq(symbol)].reset_index(drop=True)
+    documents = load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH)
+    documents = documents.loc[documents["symbol"].eq(symbol)].reset_index(drop=True)
+    return audit_research_database(
+        load_reit_master(DEFAULT_MASTER_PATH),
+        assets,
+        load_operating_metrics(metrics_path),
+        empty_distributions,
+        documents,
+        load_metric_definitions(DEFAULT_DEFINITIONS_PATH),
+        load_asset_metric_requirements(DEFAULT_REQUIREMENTS_PATH),
+    )
+
+
+def audit_solar_hydro_panel_database() -> dict[str, object]:
+    """审计 508096 光伏及扩募水电季度经营面板。"""
+
+    return _audit_energy_panel_database("508096", DEFAULT_SOLAR_HYDRO_METRICS_PATH)
+
+
+def audit_gas_panel_database() -> dict[str, object]:
+    """审计 180401 燃气发电季度经营面板。"""
+
+    return _audit_energy_panel_database("180401", DEFAULT_GAS_METRICS_PATH)
+
+
 def export_energy_seed_database(output_dir: str | Path) -> dict[str, Path]:
-    """导出能源样本的时点版本和核心指标覆盖矩阵。"""
+    """导出能源横截面及三只能源 REIT 的纵向版本与覆盖矩阵。"""
 
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -677,4 +784,21 @@ def export_energy_seed_database(output_dir: str | Path) -> dict[str, Path]:
     coverage.to_csv(paths["energy_core_metric_coverage"], index=False)
     wind_versions.to_csv(paths["wind_observation_versions"], index=False)
     wind_coverage.to_csv(paths["wind_core_metric_coverage"], index=False)
+    for symbol, metrics_path, label in [
+        ("508096", DEFAULT_SOLAR_HYDRO_METRICS_PATH, "solar_hydro"),
+        ("180401", DEFAULT_GAS_METRICS_PATH, "gas"),
+    ]:
+        panel_metrics = load_operating_metrics(metrics_path)
+        panel_documents = documents.loc[documents["symbol"].eq(symbol)]
+        panel_assets = assets.loc[assets["symbol"].eq(symbol)]
+        panel_versions = build_observation_versions(panel_metrics, panel_documents)
+        panel_coverage = build_asset_type_coverage(
+            panel_assets, panel_metrics, requirements
+        )
+        version_key = f"{label}_observation_versions"
+        coverage_key = f"{label}_core_metric_coverage"
+        paths[version_key] = output / f"{symbol}_observation_versions.csv"
+        paths[coverage_key] = output / f"{symbol}_core_metric_coverage.csv"
+        panel_versions.to_csv(paths[version_key], index=False)
+        panel_coverage.to_csv(paths[coverage_key], index=False)
     return paths

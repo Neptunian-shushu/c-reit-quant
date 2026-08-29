@@ -9,13 +9,21 @@ from creit_quant.database import (
     audit_cross_asset_seed_database,
     audit_default_pilot_database,
     audit_energy_seed_database,
+    audit_gas_panel_database,
     audit_asset_events,
+    audit_panel_reviews,
+    audit_solar_hydro_panel_database,
     audit_wind_panel_database,
     export_default_pilot_database,
     export_energy_seed_database,
     load_asset_events,
     load_assets,
     load_source_documents,
+    load_operating_metrics,
+    load_panel_reviews,
+    DEFAULT_GAS_METRICS_PATH,
+    DEFAULT_SOLAR_HYDRO_METRICS_PATH,
+    DEFAULT_WIND_METRICS_PATH,
     DEFAULT_ENERGY_ASSETS_PATH,
 )
 
@@ -82,6 +90,51 @@ def main() -> None:
     print(
         f"核心指标覆盖: {wind['available_cells']} / {wind['coverage_cells']} "
         f"({wind['coverage_pct']:.1f}%)"
+    )
+    for label, panel_name, metrics_path, panel_audit in [
+        (
+            "508096 光伏／扩募水电",
+            "508096_quarterly",
+            DEFAULT_SOLAR_HYDRO_METRICS_PATH,
+            audit_solar_hydro_panel_database(),
+        ),
+        (
+            "180401 燃气发电",
+            "180401_quarterly",
+            DEFAULT_GAS_METRICS_PATH,
+            audit_gas_panel_database(),
+        ),
+    ]:
+        print(f"\n{label}连续季度面板审计通过")
+        print(
+            f"季度: {panel_audit['quarter_start']} 至 {panel_audit['quarter_end']}，"
+            f"经营观测 {panel_audit['operating_observations']} 条"
+        )
+        print(
+            f"核心指标覆盖: {panel_audit['available_cells']} / "
+            f"{panel_audit['coverage_cells']} ({panel_audit['coverage_pct']:.1f}%)"
+        )
+        print(
+            f"时点版本: {panel_audit['observation_versions']} 条，"
+            f"其中修订版本 {panel_audit['revised_observations']} 条"
+        )
+        review = audit_panel_reviews(
+            load_operating_metrics(metrics_path),
+            load_panel_reviews(),
+            panel_name=panel_name,
+        )
+        print(
+            f"来源复核: {review['reviewed_documents']} 份，"
+            f"交叉核对 {review['double_checked_documents']} 份"
+        )
+    wind_review = audit_panel_reviews(
+        load_operating_metrics(DEFAULT_WIND_METRICS_PATH),
+        load_panel_reviews(),
+        panel_name="508028_quarterly",
+    )
+    print(
+        f"508028 来源复核: {wind_review['reviewed_documents']} 份，"
+        f"交叉核对 {wind_review['double_checked_documents']} 份"
     )
     event_audit = audit_asset_events(
         load_asset_events(),

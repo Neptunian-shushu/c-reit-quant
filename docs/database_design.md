@@ -15,9 +15,10 @@
 | `source_documents` | `data/samples/508026_source_documents.csv` | 公告类型、报告期、发布日期、URL 和核验状态 |
 | `announcement_catalog` | `data/snapshots/reit_announcement_catalog.csv` | 沪深交易所官方公告元数据和规则分类候选，不等同于已核验来源 |
 | `operating_metrics` | `data/samples/508026_quarterly_operating_metrics.csv` | long-format 经营观测及其发布时间、来源和原口径备注 |
+| `panel_quality_reviews` | `data/samples/panel_quality_reviews.csv` | 纵向面板来源的人工复核状态、日期和备注 |
 | `distributions` | `data/samples/508026_distributions.csv` | 除息日、每份分派和公告来源 |
 
-能源扩面另使用`energy_asset_master.csv`、`energy_operating_metrics.csv`和`energy_source_documents.csv`；508028连续时间序列单独维护在`508028_quarterly_operating_metrics.csv`，避免把单期横截面种子误认为完整历史面板。
+能源扩面另使用`energy_asset_master.csv`、`energy_operating_metrics.csv`和`energy_source_documents.csv`；508028、508096和180401的连续时间序列分别单独维护，避免把单期横截面种子误认为完整历史面板。
 
 运行 `python -m creit_quant.phase1_database` 会检查：
 
@@ -32,7 +33,7 @@
 
 当前508026审计结果为1项底层资产、36条经营观测、11份来源文档和2条现金分派；11份文档都已人工核验。全局指标字典已随能源扩面增加到26项，指标数量不再等同于单只试点实际使用的字段数。
 
-全市场观察层已保存2026-08-28快照，共94只证券。该快照来自 AKShare／东方财富行情源，只表示该日被数据源观察到，不能直接提供真实上市日期或历史退市状态。当前人工核验覆盖层有9只，待复核分类仍单独保留。沪深官方公告目录共8,151条，覆盖全部94只证券，并发现覆盖81只的1,131条定期报告候选。候选目录不会自动升级为正式来源登记。数据库已将三类资产样本扩展为20条规范观测，并增加39条能源横截面观测和508028的86条连续季度观测；508018、508056、508028、508096与180401的定期报告序列均已登记和计算哈希。尚未解析的报告保持元数据核验状态，缺失值没有估算填补。最新状态见 [数据库当前状态](database_status.md)。
+全市场观察层已保存2026-08-28快照，共94只证券。该快照来自 AKShare／东方财富行情源，只表示该日被数据源观察到，不能直接提供真实上市日期或历史退市状态。当前人工核验覆盖层有9只，待复核分类仍单独保留。沪深官方公告目录共8,151条，覆盖全部94只证券，并发现覆盖81只的1,131条定期报告候选。候选目录不会自动升级为正式来源登记。数据库已有20条跨资产规范种子、39条能源横截面观测，以及508028、508096、180401合计307条能源纵向观测；三条面板实际使用的43份季度／年度来源都进入复核台账。尚未解析的报告保持元数据核验状态，缺失值没有估算填补。最新状态见 [数据库当前状态](database_status.md)。
 
 ## 数据库完善优先级
 
@@ -61,7 +62,7 @@
 
 `raw candidate → reviewed observation → point-in-time snapshot`
 
-当前构建层已生成 `observation_id`、`document_id`、`raw_value`、`raw_unit`、`valid_from`、`valid_to`、`supersedes_observation_id` 和 `quality_status`。下一步仍需在解析入库时增加 `normalization_rule`、页码、原始文本位置和复核记录。这样早期暂估电量被后续报告修订时，既能得到最新正确值，也能复现历史交易时点实际已知值。
+当前构建层已生成 `observation_id`、`document_id`、`raw_value`、`raw_unit`、`valid_from`、`valid_to`、`supersedes_observation_id` 和 `quality_status`，并新增来源级面板复核台账。下一步仍需在解析入库时增加 `normalization_rule`、结构化页码／表格位置和独立复核人字段。这样早期暂估电量被后续报告修订时，既能得到最新正确值，也能复现历史交易时点实际已知值。
 
 ### 4. 做指标覆盖矩阵
 
