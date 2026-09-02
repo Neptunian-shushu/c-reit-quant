@@ -1,0 +1,5 @@
+symbol,feature_id,metric,aggregation,asset_ids,comparison_lag_quarters,source_note
+508026,hydro_generation_yoy,power_generation,sum,wuyiqiao_1_5,4,五一桥1至5号机组同口径发电量同比
+508028,wind_generation_yoy,power_generation,sum,binhai_h1_h2,4,滨海北H1和H2组合口径发电量同比
+508096,solar_settlement_yoy,settled_electricity,sum,hubei_jingtai_pv|yulin_pv,4,仅使用首发两项光伏资产避免扩募水电改变组合边界
+180401,gas_settlement_yoy,settled_electricity,sum,dongbu_power_phase1,4,东部电厂一期同口径结算电量同比

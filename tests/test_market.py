@@ -4,6 +4,8 @@ import pandas as pd
 
 from creit_quant.market import (
     fetch_csindex_history,
+    fetch_reit_adjusted_history,
+    fetch_reit_adjusted_history_direct,
     fetch_reit_history,
     fetch_reit_history_sina,
     fetch_reit_universe,
@@ -65,6 +67,63 @@ def test_sina_fallback_filters_dates_and_normalises_symbol(monkeypatch):
 
     assert frame["symbol"].tolist() == ["508026"]
     assert frame["close"].tolist() == [2.1]
+
+
+@patch("creit_quant.market.requests.get")
+def test_direct_adjusted_history_bypasses_etf_code_map(mock_get):
+    response = mock_get.return_value
+    response.raise_for_status.return_value = None
+    response.json.return_value = {
+        "data": {
+            "klines": [
+                "2024-01-02,2.0,2.1,2.2,1.9,100,21000,1.0,5.0,0.1,0.3"
+            ]
+        }
+    }
+
+    frame = fetch_reit_adjusted_history_direct(
+        "508026", "20240101", "20240131", adjust="hfq"
+    )
+
+    assert frame.loc[0, "symbol"] == "508026"
+    assert frame.loc[0, "close"] == 2.1
+    assert mock_get.call_args.kwargs["params"]["secid"] == "1.508026"
+    assert mock_get.call_args.kwargs["params"]["fqt"] == "2"
+
+
+@patch("creit_quant.market.fetch_reit_adjusted_history_direct")
+def test_adjusted_history_uses_direct_fallback(mock_direct, monkeypatch):
+    def broken_endpoint(**kwargs):
+        raise RuntimeError("mapping unavailable")
+
+    monkeypatch.setattr("creit_quant.market.ak.fund_etf_hist_em", broken_endpoint)
+    mock_direct.return_value = pd.DataFrame(
+        {"symbol": ["508026"], "date": [pd.Timestamp("2024-01-02")], "close": [2.1]}
+    )
+
+    frame = fetch_reit_adjusted_history("508026", "20240101", "20240131")
+
+    assert frame.loc[0, "close"] == 2.1
+    mock_direct.assert_called_once_with(
+        "508026", "20240101", "20240131", adjust="hfq"
+    )
+
+
+@patch("creit_quant.market.fetch_reit_adjusted_history_direct")
+def test_adjusted_history_uses_direct_fallback_when_wrapper_missing(
+    mock_direct, monkeypatch
+):
+    monkeypatch.delattr("creit_quant.market.ak.fund_etf_hist_em")
+    mock_direct.return_value = pd.DataFrame(
+        {"symbol": ["180401"], "date": [pd.Timestamp("2024-01-02")], "close": [3.1]}
+    )
+
+    frame = fetch_reit_adjusted_history("180401", "20240101", "20240131")
+
+    assert frame.loc[0, "close"] == 3.1
+    mock_direct.assert_called_once_with(
+        "180401", "20240101", "20240131", adjust="hfq"
+    )
 
 
 @patch("creit_quant.market.requests.get")

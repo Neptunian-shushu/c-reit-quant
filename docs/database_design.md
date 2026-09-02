@@ -25,6 +25,10 @@
 | `panel_quality_reviews` | `data/samples/panel_quality_reviews.csv` | 纵向面板来源的人工复核状态、日期和备注 |
 | `panel_annual_reconciliations` | `data/samples/panel_annual_reconciliations.csv` | 季度聚合与正式年报的差异、原因和处理状态 |
 | `distributions` | `data/samples/508026_distributions.csv` | 除息日、每份分派和公告来源 |
+| `energy_feature_definitions` | `data/reference/energy_feature_definitions.csv` | 证券主指标、稳定资产范围和同比口径 |
+| `energy_point_in_time_features` | `data/samples/phase2_energy_point_in_time_features.csv` | 公告日可见版本生成的同比及经营surprise |
+| `energy_cross_section_signals` | `data/samples/phase2_energy_cross_section_signals.csv` | 等待当季报告到齐后的纯多头排名 |
+| `phase2_market_snapshots` | `data/snapshots/phase2_*.csv` | 带来源和抓取时点的个券后复权及官方全收益指数 |
 
 能源扩面另使用`energy_asset_master.csv`、`energy_operating_metrics.csv`和`energy_source_documents.csv`；508028、508096和180401的连续时间序列分别单独维护，避免把单期横截面种子误认为完整历史面板。
 
@@ -109,4 +113,9 @@ python -m creit_quant.phase1_database \
 
 ## 最近可执行里程碑
 
-先完成全市场证券主表和公告覆盖清单，然后选取水电、高速公路、产业园／物流各 2—3 只 REIT，建立连续季度指标覆盖矩阵。只有在这一层稳定后，再扩大天气或宏观特征，能避免另类数据领先于基本面主表建设。
+能源PIT横截面已经证明版本血缘、稳定资产范围和公告后交易日期可以连接。下一步继续数据库优先：
+
+1. 为四只能源REIT补齐正式分派表并与后复权收益交叉验证；
+2. 在全市场主表加入基金份额、市值、NAV、分派和扩募生效历史；
+3. 从高速公路和产业园／物流各选择至少2只建立相同PIT特征；
+4. 完成后再测试分派收益率、P/NAV、流动性及经营surprise的联合排序。

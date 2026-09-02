@@ -7,6 +7,15 @@ market:
     status: validated_documentation
     function: reits_hist_em
     source: Eastmoney via AKShare
+  eastmoney_adjusted_daily:
+    status: validated_live
+    function: fund_etf_hist_em_with_direct_kline_fallback
+    source: Eastmoney via AKShare or direct push2his endpoint
+    warning: "AKShare的全ETF代码映射端点可能先于历史K线失败；已知REIT代码可按沪市1、深市0直接请求同一K线端点。复权快照必须保存抓取时间。"
+  csindex_total_return:
+    status: validated_live
+    symbol: "932047"
+    source: China Securities Index official website
   akshare_intraday:
     status: validated_documentation
     function: reits_hist_min_em

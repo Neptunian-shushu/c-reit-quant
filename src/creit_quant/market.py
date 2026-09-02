@@ -9,6 +9,7 @@ import pandas as pd
 import requests
 
 CSINDEX_HISTORY_URL = "https://www.csindex.com.cn/csindex-home/perf/index-perf"
+EASTMONEY_HISTORY_URL = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
 
 
 class MarketDataError(RuntimeError):
@@ -132,21 +133,102 @@ def fetch_reit_adjusted_history(
     if not re.fullmatch(r"\d{8}", start_date) or not re.fullmatch(r"\d{8}", end_date):
         raise ValueError("start_date and end_date must use YYYYMMDD")
     endpoint = getattr(ak, "fund_etf_hist_em", None)
+    wrapper_error: Exception | None = None
     if endpoint is None:
-        raise MarketDataError("This AKShare installation does not provide fund_etf_hist_em")
-    try:
-        frame = endpoint(
-            symbol=str(symbol),
-            period="daily",
-            start_date=start_date,
-            end_date=end_date,
-            adjust=adjust,
-        )
-    except Exception as exc:
-        raise MarketDataError(f"AKShare adjusted history request failed for {symbol}: {exc}") from exc
+        wrapper_error = RuntimeError("AKShare does not provide fund_etf_hist_em")
+        frame = None
+    else:
+        try:
+            frame = endpoint(
+                symbol=str(symbol),
+                period="daily",
+                start_date=start_date,
+                end_date=end_date,
+                adjust=adjust,
+            )
+        except Exception as exc:
+            wrapper_error = exc
+            frame = None
     if frame is None or frame.empty:
-        raise MarketDataError(f"AKShare returned no adjusted history for {symbol}")
+        try:
+            return fetch_reit_adjusted_history_direct(
+                symbol, start_date, end_date, adjust=adjust
+            )
+        except MarketDataError as direct_error:
+            detail = f"; AKShare wrapper error: {wrapper_error}" if wrapper_error else ""
+            raise MarketDataError(
+                f"AKShare and direct Eastmoney adjusted history failed for "
+                f"{symbol}: {direct_error}{detail}"
+            ) from direct_error
     result = _normalise_columns(frame, HISTORY_COLUMNS)
+    result.insert(0, "symbol", str(symbol))
+    return result
+
+
+def fetch_reit_adjusted_history_direct(
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    *,
+    adjust: str = "hfq",
+    timeout: float = 30,
+) -> pd.DataFrame:
+    """绕过AKShare全ETF代码映射，直接获取东方财富REIT历史K线。
+
+    AKShare包装器会先请求全市场ETF代码表；该辅助请求失败时，已知六位
+    REIT代码仍可直接映射为沪市 ``1`` 或深市 ``0``。返回字段和复权参数
+    与 ``fund_etf_hist_em`` 保持一致，失败时同样不生成替代数据。
+    """
+
+    if not re.fullmatch(r"\d{6}", str(symbol)):
+        raise ValueError("symbol must be a six-digit C-REIT code")
+    if adjust not in {"", "qfq", "hfq"}:
+        raise ValueError("adjust must be one of '', 'qfq', or 'hfq'")
+    if not re.fullmatch(r"\d{8}", start_date) or not re.fullmatch(
+        r"\d{8}", end_date
+    ):
+        raise ValueError("start_date and end_date must use YYYYMMDD")
+    market_id = "1" if str(symbol).startswith("5") else "0"
+    params = {
+        "secid": f"{market_id}.{symbol}",
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
+        "klt": "101",
+        "fqt": {"": "0", "qfq": "1", "hfq": "2"}[adjust],
+        "beg": start_date,
+        "end": end_date,
+        "ut": "7eea3edcaed734bea9cbfc24409ed989",
+    }
+    try:
+        response = requests.get(EASTMONEY_HISTORY_URL, params=params, timeout=timeout)
+        response.raise_for_status()
+        payload = response.json()
+        klines = payload.get("data", {}).get("klines")
+    except (requests.RequestException, ValueError, AttributeError) as exc:
+        raise MarketDataError(
+            f"direct Eastmoney history request failed for {symbol}: {exc}"
+        ) from exc
+    if not klines:
+        raise MarketDataError(f"direct Eastmoney returned no history for {symbol}")
+    frame = pd.DataFrame([row.split(",") for row in klines])
+    if frame.shape[1] != 11:
+        raise MarketDataError(f"direct Eastmoney history fields changed for {symbol}")
+    frame.columns = [
+        "日期",
+        "开盘",
+        "收盘",
+        "最高",
+        "最低",
+        "成交量",
+        "成交额",
+        "振幅",
+        "涨跌幅",
+        "涨跌额",
+        "换手率",
+    ]
+    result = _normalise_columns(frame, HISTORY_COLUMNS)
+    numeric = [column for column in result.columns if column != "date"]
+    result[numeric] = result[numeric].apply(pd.to_numeric, errors="raise")
     result.insert(0, "symbol", str(symbol))
     return result
 

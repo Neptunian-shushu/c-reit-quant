@@ -157,6 +157,35 @@
 
 每份分派金额必须来自正式收益分配公告。公告日决定信息时点，除息日决定持有收益归属，两者不可混用。
 
+### `energy_feature_definitions`
+
+粒度：每只进入能源横截面的证券一行。定义主经营指标、聚合方式、稳定资产ID集合和同比滞后期。508096只登记两项首发光伏资产，避免扩募水电在2025Q4突然改变历史组合边界。
+
+### `energy_point_in_time_features`
+
+粒度：每只证券每个可同比季度一行。当前值和四季度前值都从当次公告日有效的观测版本读取，`current_observation_ids`和`lag_observation_ids`保存完整血缘。主要字段：
+
+| 字段 | 含义 |
+|---|---|
+| `operating_yoy_pct` | 稳定资产范围主指标的四季度同比 |
+| `expected_yoy_pct` | 该证券此前已经公布同比的扩展均值 |
+| `operating_surprise_pct` | 同比减去历史预期；不是分析师一致预期 |
+| `publication_date` | 当前季度所有登记资产指标均已公开的日期 |
+| `lag_value_as_of_publication` | 当次公告日可见的四季度前版本值 |
+| `lineage_quality_status` | 当前值与同比基数是否全部连接到已人工核验来源 |
+
+### `energy_cross_section_signals`
+
+粒度：每个季度每只符合条件的能源证券一行。只有至少3只证券拥有非空surprise时才形成横截面；`decision_date`取当季入选报告最晚发布日期，`selected=true`仅标记最高分证券，不包含空头。
+
+### `phase2_market_snapshots`
+
+能源证券快照粒度为每只证券每个交易日一行，使用东方财富后复权参数并保存抓取时间；932047快照来自中证指数官网，`index_kind=total_return`。后复权序列只能在保存的快照内复现，未来刷新可能因新增分派改变历史价格尺度，因此不得静默覆盖研究版本。
+
+### `phase2_strategy_events`
+
+粒度：每个季度横截面每只证券一行。组合持有期截至下一次再平衡；rank IC固定使用20个共同交易日的前瞻收益，避免公告间隔不同或最后一期尚未结束造成标签长度不一致。
+
 ## 数据产品
 
 数据库构建命令会生成：
@@ -174,5 +203,9 @@
 - `508026_quarterly_weather_forecast_lead24.csv`：固定GFS提前24小时历史预报；
 - `508026_annual_model_panel.csv`：年度经营与两种天气代理连接表；
 - `508026_annual_model_predictions.csv`及汇总：严格扩展窗口解释模型结果。
+- `phase2_energy_point_in_time_features.csv`：四只能源REIT的35条PIT同比特征；
+- `phase2_energy_cross_section_signals.csv`：8个季度、28条横截面排名；
+- `phase2_energy_strategy_events.csv`：固定20交易日前瞻收益及事件持有收益；
+- `phase2_energy_strategy_summary.csv`：含佣金、现金收益和两个基准的组合汇总。
 
-这些文件属于可重复生成的分析数据，不作为人工维护源表，也不提交仓库。
+Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2四张小型派生表随真实行情快照提交，作为当前负结果的精确研究版本；都可以由`python -m creit_quant.phase2`离线重建。
