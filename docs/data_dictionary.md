@@ -110,6 +110,22 @@
 
 粒度：每个天气点、自然季度和数据类型一行。当前508026快照使用`data_kind=ex_post_reanalysis_era5`，保存Open-Meteo返回的ERA5网格中心、模型参数、抓取日和完整日历覆盖。该表适合解释性研究，不包含forecast issue time，不能用于严格交易回测。
 
+### `watershed_proxy_metadata`
+
+粒度：每个自动划分候选流域一行。保存请求和吸附后的出水口、自动面积、官方披露面积、面积偏差、GeoJSON顶点数、SHA-256、来源、许可和质量状态。当前状态`experimental_area_mismatch`表示只能用于敏感性分析，不能冒充官方边界。
+
+### `catchment_grid_weights`
+
+粒度：候选流域内每个固定ERA5网格一行。`area_weight`由0.01度规则格点落入候选多边形后近似分配，1783个流域内落点映射为8个网格；权重必须为正且合计为1。构建时会从GeoJSON重算并逐格核对，该权重仍继承候选流域的不确定性。
+
+### `catchment_weather_features`
+
+粒度：每个候选流域和自然季度一行。`data_kind=ex_post_reanalysis_era5_area_weighted_candidate`明确表示它既是事后再分析，又依赖实验流域。当前覆盖8个网格和2013—2022年完整季度。
+
+### `fixed_lead_weather_forecast`
+
+粒度：每个天气点、自然季度、模型和固定提前期一行。当前使用`gfs_global`的`precipitation_previous_day1`，即每个有效小时取提前24小时的预测。`forecast_hours`必须等于季度日历小时数。模型运行仍有计算发布延迟，季度合计也只有到期末才完整可知。
+
 ### `asset_events`
 
 粒度：每项会改变资产边界或经营可比性的事件一行。当前覆盖扩募购入资产、外部电网停机和电价机制变化。只知道月份而不知道具体日期时，必须保存`date_precision=month`，不能虚构日级起止时间。
@@ -152,5 +168,11 @@
 - `508026_hydrology_mapping.csv`：水文实体关系；
 - `508026_quarterly_weather_reanalysis.csv`：固定ERA5季度天气快照；
 - `508026_prelisting_annual_weather_panel.csv`：完整年度经营指标和点位天气连接表。
+- `508026_watershed_candidate.geojson`及元数据：实验流域边界、指纹和质量状态；
+- `508026_catchment_grid_weights.csv`：8个ERA5面积近似权重；
+- `508026_quarterly_catchment_weather_reanalysis.csv`：候选流域季度天气；
+- `508026_quarterly_weather_forecast_lead24.csv`：固定GFS提前24小时历史预报；
+- `508026_annual_model_panel.csv`：年度经营与两种天气代理连接表；
+- `508026_annual_model_predictions.csv`及汇总：严格扩展窗口解释模型结果。
 
 这些文件属于可重复生成的分析数据，不作为人工维护源表，也不提交仓库。

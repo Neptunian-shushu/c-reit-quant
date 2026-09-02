@@ -18,6 +18,10 @@
 | `prelisting_operating_metrics` | `data/samples/508026_prelisting_operating_metrics.csv` | IPO材料披露的年度／年初至今历史，保留真实公开可用日 |
 | `hydrology_mapping` | `data/samples/508026_hydrology_mapping.csv` | 电站、集水区、河流和上游调节水库关系及来源精度 |
 | `weather_features` | `data/samples/508026_quarterly_weather_reanalysis.csv` | 固定ERA5模型的点位季度再分析天气，不是历史预报 |
+| `watershed_proxy` | `data/samples/508026_watershed_candidate.geojson` | MERIT自动候选流域；保存指纹、许可和面积误差，不能冒充官方边界 |
+| `catchment_grid_weights` | `data/samples/508026_catchment_grid_weights.csv` | 候选流域映射到8个ERA5网格的面积近似权重 |
+| `catchment_weather_features` | `data/samples/508026_quarterly_catchment_weather_reanalysis.csv` | 候选流域2013—2022面积加权再分析天气 |
+| `fixed_lead_weather_forecast` | `data/samples/508026_quarterly_weather_forecast_lead24.csv` | GFS global固定提前24小时历史预报时点层 |
 | `panel_quality_reviews` | `data/samples/panel_quality_reviews.csv` | 纵向面板来源的人工复核状态、日期和备注 |
 | `panel_annual_reconciliations` | `data/samples/panel_annual_reconciliations.csv` | 季度聚合与正式年报的差异、原因和处理状态 |
 | `distributions` | `data/samples/508026_distributions.csv` | 除息日、每份分派和公告来源 |
@@ -35,7 +39,7 @@
 - 为每条经营观测生成稳定 ID、来源文档 ID、生效区间和修订关系；
 - 按任意历史日期恢复当时可见的 point-in-time 快照。
 
-当前508026审计结果为1项底层资产、36条上市后季度观测、55条上市前观测、14份来源文档和2条现金分派；14份文档都已人工核验。另有4条水文关系和54季度固定ERA5天气。全局指标字典为29项，指标数量不等同于单只试点实际使用字段数。
+当前508026审计结果为1项底层资产、36条上市后季度观测、55条上市前观测、14份来源文档和2条现金分派；14份文档都已人工核验。另有4条水文关系、54季度固定ERA5点位天气、40季度候选流域天气和9季度固定提前期预报。全局指标字典为29项，指标数量不等同于单只试点实际使用字段数。
 
 全市场观察层已保存2026-08-28快照，共94只证券。该快照来自 AKShare／东方财富行情源，只表示该日被数据源观察到，不能直接提供真实上市日期或历史退市状态。当前人工核验覆盖层有9只，待复核分类仍单独保留。沪深官方公告目录共8,151条，覆盖全部94只证券，并发现覆盖81只的1,131条定期报告候选。候选目录不会自动升级为正式来源登记。数据库已有20条跨资产规范种子、39条能源横截面观测，以及508028、508096、180401合计307条能源纵向观测；三条面板实际使用的43份季度／年度来源都进入复核台账。尚未解析的报告保持元数据核验状态，缺失值没有估算填补。最新状态见 [数据库当前状态](database_status.md)。
 
@@ -92,7 +96,7 @@ python -m creit_quant.phase1_database \
 
 资产表不能只有一个经纬度。水电需要上游流域多边形和梯级关系；高速公路需要路段与收费站；园区和物流需要园区边界。天气表还应保存数据类型、网格／站点、预测发布时间、有效时间、提前期和数据版本，明确区分再分析与历史预报。
 
-508026已经登记坝址以上1642平方公里集水区、九龙河和溪古水库关系，但没有公开流域多边形，因此当前ERA5快照仍只是电站点位代理。默认best-match天气曾出现跨期模型切换，正式快照现已固定`era5`；这解决模型一致性，不解决空间代表性。
+508026已经登记坝址以上1642平方公里集水区、九龙河和溪古水库关系。MERIT自动划分候选流域及8网格面积权重已加入研究层，但1930平方公里自动面积较正式披露高17.54%，所以状态固定为实验代理。默认best-match天气曾出现跨期模型切换，长期快照固定`era5`；可交易时点层另用`gfs_global`的`_previous_day1`固定24小时时距。前者解决长期一致性，后者解决固定提前期，两者都没有解决准确流域边界和水库调度。
 
 ### 6. 最后再升级存储引擎
 

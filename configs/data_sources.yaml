@@ -23,12 +23,20 @@ exchange_disclosures:
 alternative_data:
   open_meteo:
     status: validated_api
-    scope: [historical_weather_reanalysis, archived_historical_forecast]
+    scope: [historical_weather_reanalysis, archived_historical_forecast, fixed_lead_previous_runs]
     endpoints:
       reanalysis: https://archive-api.open-meteo.com/v1/archive
       historical_forecast: https://historical-forecast-api.open-meteo.com/v1/forecast
+      previous_runs: https://previous-runs-api.open-meteo.com/v1/forecast
     reanalysis_model: era5
-    warning: "长期再分析面板必须固定 models=era5，不能使用可能跨期换模的默认 best-match。拼接历史预报也不是固定提前期的预测版本；严格时点回测应保存历史运行批次。"
+    fixed_lead_model: gfs_global
+    warning: "长期再分析面板必须固定 models=era5。严格时点天气层使用previous-runs的_previous_day1固定24小时时距；仍须为模型计算和发布延迟留安全缓冲。"
+  global_watersheds:
+    status: validated_experimental
+    source: MERIT-Hydro and MERIT-Basins
+    endpoint: https://mghydro.com/app/watershed_api
+    license: CC-BY-NC-SA-4.0
+    warning: "自动划分面积1930平方公里，比正式披露1642平方公里高17.54%，只能作为实验代理，不能冒充官方流域边界。"
   era5:
     status: validated_api
     scope: [historical_weather_reanalysis]

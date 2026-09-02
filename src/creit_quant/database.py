@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -9,12 +10,22 @@ import pandas as pd
 from creit_quant.hydropower import (
     DEFAULT_ASSET_PATH,
     DEFAULT_METRICS_PATH,
+    DEFAULT_WATERSHED_GEOJSON_PATH,
     build_prelisting_weather_panel,
+    load_catchment_grid_weights,
+    load_catchment_weather_features,
+    load_fixed_lead_weather_forecast,
     load_hydrology_mapping,
     load_hydropower_asset,
     load_hydropower_metrics,
     load_hydropower_weather_features,
     load_prelisting_hydropower_metrics,
+    load_watershed_proxy,
+)
+from creit_quant.hydropower_model import (
+    build_annual_model_panel,
+    expanding_annual_backtest,
+    summarize_annual_backtest,
 )
 from creit_quant.documents import PERIODIC_DOCUMENT_TYPES
 from creit_quant.strategy import DEFAULT_DISTRIBUTIONS_PATH, load_distributions
@@ -818,6 +829,15 @@ def export_default_pilot_database(
     hydrology = load_hydrology_mapping()
     weather = load_hydropower_weather_features()
     annual_weather = build_prelisting_weather_panel(prelisting, weather)
+    watershed = load_watershed_proxy()
+    catchment_weights = load_catchment_grid_weights()
+    catchment_weather = load_catchment_weather_features()
+    fixed_lead_forecast = load_fixed_lead_weather_forecast()
+    annual_model_panel = build_annual_model_panel(
+        prelisting, weather, catchment_weather
+    )
+    annual_predictions = expanding_annual_backtest(annual_model_panel)
+    annual_model_summary = summarize_annual_backtest(annual_predictions)
 
     paths = {
         "observation_versions": output / "operating_observation_versions.csv",
@@ -829,6 +849,18 @@ def export_default_pilot_database(
         / "508026_quarterly_weather_reanalysis.csv",
         "prelisting_annual_weather_panel": output
         / "508026_prelisting_annual_weather_panel.csv",
+        "watershed_candidate_geojson": output
+        / "508026_watershed_candidate.geojson",
+        "watershed_proxy_metadata": output
+        / "508026_watershed_proxy_metadata.csv",
+        "catchment_grid_weights": output / "508026_catchment_grid_weights.csv",
+        "quarterly_catchment_weather_reanalysis": output
+        / "508026_quarterly_catchment_weather_reanalysis.csv",
+        "quarterly_weather_forecast_lead24": output
+        / "508026_quarterly_weather_forecast_lead24.csv",
+        "annual_model_panel": output / "508026_annual_model_panel.csv",
+        "annual_model_predictions": output / "508026_annual_model_predictions.csv",
+        "annual_model_summary": output / "508026_annual_model_summary.csv",
     }
     versions.to_csv(paths["observation_versions"], index=False)
     coverage.to_csv(paths["core_metric_coverage"], index=False)
@@ -836,6 +868,20 @@ def export_default_pilot_database(
     hydrology.to_csv(paths["hydrology_mapping"], index=False)
     weather.to_csv(paths["quarterly_weather_reanalysis"], index=False)
     annual_weather.to_csv(paths["prelisting_annual_weather_panel"], index=False)
+    shutil.copyfile(
+        DEFAULT_WATERSHED_GEOJSON_PATH, paths["watershed_candidate_geojson"]
+    )
+    watershed.to_csv(paths["watershed_proxy_metadata"], index=False)
+    catchment_weights.to_csv(paths["catchment_grid_weights"], index=False)
+    catchment_weather.to_csv(
+        paths["quarterly_catchment_weather_reanalysis"], index=False
+    )
+    fixed_lead_forecast.to_csv(
+        paths["quarterly_weather_forecast_lead24"], index=False
+    )
+    annual_model_panel.to_csv(paths["annual_model_panel"], index=False)
+    annual_predictions.to_csv(paths["annual_model_predictions"], index=False)
+    annual_model_summary.to_csv(paths["annual_model_summary"], index=False)
     if as_of is not None:
         snapshot = select_observations_as_of(versions, as_of)
         snapshot.insert(0, "snapshot_as_of", pd.Timestamp(as_of))

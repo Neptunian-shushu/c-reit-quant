@@ -9,6 +9,7 @@ import requests
 
 HISTORICAL_WEATHER_URL = "https://archive-api.open-meteo.com/v1/archive"
 HISTORICAL_FORECAST_URL = "https://historical-forecast-api.open-meteo.com/v1/forecast"
+PREVIOUS_RUNS_URL = "https://previous-runs-api.open-meteo.com/v1/forecast"
 DEFAULT_HISTORICAL_VARIABLES = (
     "temperature_2m_mean",
     "precipitation_sum",
@@ -130,4 +131,40 @@ def fetch_historical_forecast(
         selected,
         "hourly",
         timeout,
+    )
+
+
+def fetch_previous_runs(
+    latitude: float,
+    longitude: float,
+    start_date: str,
+    end_date: str,
+    variables: Sequence[str],
+    *,
+    lead_days: int = 1,
+    model: str | None = None,
+    timeout: float = 30,
+) -> pd.DataFrame:
+    """获取固定提前期的历史天气预报序列。
+
+    Open-Meteo以``变量_previous_dayN``表示有效时刻前N天的模型预报。
+    该产品比拼接历史预报更适合时点回测，但模型初始化后仍有计算和发布
+    延迟；使用者必须为该延迟留出安全缓冲。
+    """
+
+    if not 1 <= lead_days <= 7:
+        raise ValueError("lead_days must be between 1 and 7")
+    if not variables:
+        raise ValueError("variables cannot be empty")
+    selected = tuple(f"{variable}_previous_day{lead_days}" for variable in variables)
+    return _request_weather(
+        PREVIOUS_RUNS_URL,
+        latitude,
+        longitude,
+        start_date,
+        end_date,
+        selected,
+        "hourly",
+        timeout,
+        model,
     )

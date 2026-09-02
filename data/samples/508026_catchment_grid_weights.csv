@@ -1,0 +1,9 @@
+symbol,asset_id,weather_area_id,grid_point_id,latitude,longitude,area_weight,weight_method,model,source_url
+508026,wuyiqiao_1_5,wuyiqiao_merit_candidate,era5_grid_01,29.0,101.5,0.3236,0.01_degree_lattice_cell_assignment,era5,https://archive-api.open-meteo.com/v1/archive?models=era5
+508026,wuyiqiao_1_5,wuyiqiao_merit_candidate,era5_grid_02,29.25,101.5,0.2417,0.01_degree_lattice_cell_assignment,era5,https://archive-api.open-meteo.com/v1/archive?models=era5
+508026,wuyiqiao_1_5,wuyiqiao_merit_candidate,era5_grid_03,28.75,101.5,0.1239,0.01_degree_lattice_cell_assignment,era5,https://archive-api.open-meteo.com/v1/archive?models=era5
+508026,wuyiqiao_1_5,wuyiqiao_merit_candidate,era5_grid_04,28.75,101.75,0.1021,0.01_degree_lattice_cell_assignment,era5,https://archive-api.open-meteo.com/v1/archive?models=era5
+508026,wuyiqiao_1_5,wuyiqiao_merit_candidate,era5_grid_05,29.0,101.75,0.097,0.01_degree_lattice_cell_assignment,era5,https://archive-api.open-meteo.com/v1/archive?models=era5
+508026,wuyiqiao_1_5,wuyiqiao_merit_candidate,era5_grid_06,29.25,101.75,0.0488,0.01_degree_lattice_cell_assignment,era5,https://archive-api.open-meteo.com/v1/archive?models=era5
+508026,wuyiqiao_1_5,wuyiqiao_merit_candidate,era5_grid_07,29.25,101.25,0.0337,0.01_degree_lattice_cell_assignment,era5,https://archive-api.open-meteo.com/v1/archive?models=era5
+508026,wuyiqiao_1_5,wuyiqiao_merit_candidate,era5_grid_08,29.0,101.25,0.0292,0.01_degree_lattice_cell_assignment,era5,https://archive-api.open-meteo.com/v1/archive?models=era5

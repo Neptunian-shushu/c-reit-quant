@@ -6,10 +6,21 @@ import pandas as pd
 
 from creit_quant.hydropower import (
     audit_hydropower_extension,
+    audit_watershed_weather_proxy,
+    load_catchment_grid_weights,
+    load_catchment_weather_features,
+    load_fixed_lead_weather_forecast,
     load_hydrology_mapping,
     load_hydropower_metrics,
     load_hydropower_weather_features,
     load_prelisting_hydropower_metrics,
+    load_watershed_proxy,
+)
+from creit_quant.hydropower_model import (
+    assess_phase1_completion,
+    build_annual_model_panel,
+    expanding_annual_backtest,
+    summarize_annual_backtest,
 )
 from creit_quant.database import (
     DEFAULT_CROSS_DOCUMENTS_PATH,
@@ -79,6 +90,32 @@ def main() -> None:
         f"完整年度 {hydro_extension['complete_annual_years']} 年，"
         f"水文关系 {hydro_extension['hydrology_mappings']} 条，"
         f"再分析天气 {hydro_extension['weather_quarters']} 个季度"
+    )
+    watershed = load_watershed_proxy()
+    catchment_weights = load_catchment_grid_weights()
+    catchment_weather = load_catchment_weather_features()
+    audit_watershed_weather_proxy(watershed, catchment_weights, catchment_weather)
+    annual_model_panel = build_annual_model_panel(
+        load_prelisting_hydropower_metrics(),
+        load_hydropower_weather_features(),
+        catchment_weather,
+    )
+    annual_predictions = expanding_annual_backtest(annual_model_panel)
+    annual_model_summary = summarize_annual_backtest(annual_predictions)
+    phase1 = assess_phase1_completion(
+        annual_model_panel,
+        load_hydropower_metrics(),
+        load_fixed_lead_weather_forecast(),
+        annual_predictions,
+        watershed,
+    )
+    best = annual_model_summary.iloc[0]
+    print(
+        "Phase 1研究闭环: "
+        f"{'完成' if phase1['phase1_research_complete'] else '未完成'}；"
+        f"最优年度基线 {best['model']}，MAE {best['mae_10k_kwh']:.2f}万千瓦时；"
+        "可部署季度nowcast: "
+        f"{'就绪' if phase1['deployable_nowcast_ready'] else '未就绪'}"
     )
     cross = audit_cross_asset_seed_database()
     print("\n跨资产数据库种子审计通过")

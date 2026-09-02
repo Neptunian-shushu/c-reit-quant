@@ -438,11 +438,22 @@ def test_database_export_builds_versions_coverage_and_snapshot(tmp_path):
         "hydrology_mapping",
         "quarterly_weather_reanalysis",
         "prelisting_annual_weather_panel",
+        "watershed_candidate_geojson",
+        "watershed_proxy_metadata",
+        "catchment_grid_weights",
+        "quarterly_catchment_weather_reanalysis",
+        "quarterly_weather_forecast_lead24",
+        "annual_model_panel",
+        "annual_model_predictions",
+        "annual_model_summary",
     }
     assert all(path.exists() for path in paths.values())
     snapshot = pd.read_csv(paths["point_in_time_snapshot"], dtype={"symbol": str})
     assert snapshot["snapshot_as_of"].eq("2025-07-31").all()
     assert pd.to_datetime(snapshot["valid_from"]).le(pd.Timestamp("2025-07-31")).all()
+    model_summary = pd.read_csv(paths["annual_model_summary"])
+    assert len(model_summary) == 4
+    assert model_summary.iloc[0]["model"] == "historical_mean"
 
 
 def test_database_audit_rejects_unregistered_source_url():
