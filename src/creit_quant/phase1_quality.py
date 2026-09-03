@@ -5,9 +5,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import pandas as pd
-
-from creit_quant.database import DEFAULT_CROSS_DOCUMENTS_PATH, load_source_documents
+from creit_quant.database import (
+    DEFAULT_CROSS_DOCUMENTS_PATH,
+    DEFAULT_ENERGY_DOCUMENTS_PATH,
+    load_source_documents,
+)
+from creit_quant.documents import merge_document_registries
 from creit_quant.announcements import load_announcement_catalog
 from creit_quant.master_data import (
     apply_security_overrides,
@@ -41,12 +44,12 @@ def main() -> None:
         ),
         load_security_overrides(),
     )
-    documents = pd.concat(
-        [load_source_documents(), load_source_documents(DEFAULT_CROSS_DOCUMENTS_PATH)],
-        ignore_index=True,
+    documents = merge_document_registries(
+        load_source_documents(), load_source_documents(DEFAULT_CROSS_DOCUMENTS_PATH)
     )
-    if documents["document_id"].duplicated().any() or documents["source_url"].duplicated().any():
-        parser.error("合并后的公告登记表存在重复 document_id 或 source_url")
+    documents = merge_document_registries(
+        documents, load_source_documents(DEFAULT_ENERGY_DOCUMENTS_PATH)
+    )
     coverage = build_document_coverage(master, documents)
     catalog = load_announcement_catalog(args.announcement_catalog)
     catalog_coverage = build_announcement_catalog_coverage(master, catalog)

@@ -46,7 +46,7 @@ from creit_quant.strategy import load_distributions
 def test_default_pilot_database_has_complete_relations():
     audit = audit_default_pilot_database()
 
-    assert audit["securities"] == 6
+    assert audit["securities"] == 8
     assert audit["assets"] == 1
     assert audit["operating_observations"] == 36
     assert audit["source_documents"] == 14
@@ -62,12 +62,12 @@ def test_default_pilot_database_has_complete_relations():
 def test_cross_asset_seed_preserves_real_missing_coverage():
     audit = audit_cross_asset_seed_database()
 
-    assert audit["securities"] == 6
+    assert audit["securities"] == 8
     assert audit["assets"] == 3
     assert audit["operating_observations"] == 20
-    assert audit["source_documents"] == 56
+    assert audit["source_documents"] == 84
     assert audit["source_documents_used"] == 5
-    assert audit["metadata_verified_documents"] == 51
+    assert audit["metadata_verified_documents"] == 27
     assert audit["coverage_cells"] == 12
     assert audit["available_cells"] == 10
     assert audit["coverage_pct"] == pytest.approx(83.3333, rel=1e-4)
@@ -76,7 +76,7 @@ def test_cross_asset_seed_preserves_real_missing_coverage():
 def test_energy_seed_has_asset_level_cross_section_and_honest_tax_gap():
     audit = audit_energy_seed_database()
 
-    assert audit["securities"] == 6
+    assert audit["securities"] == 8
     assert audit["assets"] == 6
     assert audit["operating_observations"] == 39
     assert audit["source_documents"] == 61

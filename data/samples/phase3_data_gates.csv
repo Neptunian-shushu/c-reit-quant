@@ -1,0 +1,8 @@
+gate,observed,required,passed,deployable
+asset_types,6,3,True,False
+securities,8,8,True,False
+cross_sections,8,12,False,False
+complete_20d_events,65,40,True,False
+historical_universe_snapshots,1,12,False,False
+dpu_pit_securities,1,8,False,False
+nav_share_pit_securities,0,8,False,False

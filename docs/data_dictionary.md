@@ -198,6 +198,26 @@
 
 粒度：每个季度横截面每只证券一行。组合持有期截至下一次再平衡；rank IC固定使用20个共同交易日的前瞻收益，避免公告间隔不同或最后一期尚未结束造成标签长度不一致。
 
+### `phase3_asset_master` 与 `phase3_asset_events`
+
+`phase3_asset_master`明确登记两项高速和两项物流研究范围。180301使用首发现代物流中心；508056使用2023年扩募后的十项资产组合。`phase3_asset_events`保存两次物流扩募，`date_precision`区分已知日和只知道季度，禁止把季度末占位误当成精确交割日。
+
+### `operating_feature_definitions`
+
+粒度为每只进入跨资产横截面的证券一行。`asset_ids`必须指向连续可比范围；主指标分别为高速日均自然车流、物流期末出租率、能源发电量或结算电量。所有比率特征当前只允许单一组合范围，避免错误加总多个出租率。
+
+### `phase3_operating_point_in_time_features`
+
+粒度为证券与可同比季度。字段沿用能源PIT结构，并增加`asset_type`。`expected_yoy_pct`只使用该证券在当前公告前已经公开的历史同比，`operating_surprise_pct`不代表分析师一致预期。
+
+### `phase3_announcement_event_study`
+
+粒度为证券、报告期和事件窗口。`entry_date`严格晚于`publication_date`；窗口固定为20或60个共同交易日。`benchmark_return_pct`使用932047全收益指数，`excess_return_pct`为个券后复权收益减基准收益。
+
+### `phase3_operating_cross_section_signals` 与策略结果
+
+每个季度至少6只证券有非空surprise后才形成横截面，等待当季入选报告中最晚发布日期后再交易。基线`selected=true`仅标记最高2只，不含空头。`phase3_strategy_summary.csv`保存双向各万一、每笔最低5元和现金年化1.5%的基线；`phase3_strategy_robustness.csv`固定列出top-1/2/3、5个基点佣金、取消最低佣金和零现金收益情景，不能从中事后挑选“最优”参数。
+
 ## 数据产品
 
 数据库构建命令会生成：
@@ -218,6 +238,10 @@
 - `phase2_energy_point_in_time_features.csv`：四只能源REIT的35条PIT同比特征；
 - `phase2_energy_cross_section_signals.csv`：8个季度、28条横截面排名；
 - `phase2_energy_strategy_events.csv`：固定20交易日前瞻收益及事件持有收益；
+- `phase3_operating_point_in_time_features.csv`：八只REIT的73条跨资产PIT特征；
+- `phase3_operating_cross_section_signals.csv`：8个季度、60条跨资产排名；
+- `phase3_announcement_event_study.csv`：20／60交易日公告事件结果；
+- `phase3_strategy_summary.csv`及稳健性表：纯多头、真实成本和932047比较；
 - `phase2_energy_strategy_summary.csv`：含佣金、现金收益和两个基准的组合汇总。
 - `phase2_market_factor_signals.csv`：周／月频市场因子横截面；
 - `phase2_market_factor_summary.csv`：14组纯多头因子结果；

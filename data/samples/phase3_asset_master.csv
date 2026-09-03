@@ -1,0 +1,5 @@
+symbol,asset_id,asset_name,asset_type,aggregation_scope,source_url,notes
+180201,guanghe_expressway,广州至河源高速公路广州段,toll_road,asset,https://disc.static.szse.cn/disc/disk03/finalpage/2026-07-21/e98b1e02-6b71-4e0c-8200-c51a13b7b40c.PDF,单一收费公路项目；日均自然车流和含税拆分结算通行费口径
+180301,modern_logistics_center,盐田港现代物流中心,logistics,asset,https://disc.static.szse.cn/disc/disk03/finalpage/2026-07-21/07522a94-dc7a-46f6-b694-51f76af36494.PDF,首发资产稳定范围；不并入2023年扩募世纪物流园
+508018,jiayu_tongcheng_expressway,武汉至深圳高速公路嘉鱼至通城段,toll_road,asset,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-07-21/508018_20260721_VWHG.pdf,单一收费公路项目；以季度报告日均自然车流为主特征
+508056,post_expansion_portfolio,扩募后十项仓储物流资产组合,logistics,fund_portfolio,https://www.sse.com.cn/disclosure/fund/announcement/c/new/2023-07-21/508056_20230721_9HWW.pdf,2023年6月16日扩募份额上市后稳定组合；与首发七项资产不可直接拼接
