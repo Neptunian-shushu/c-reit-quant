@@ -1,0 +1,4 @@
+portfolio,total_return_pct,annualised_return_pct,annualised_volatility_pct,max_drawdown_pct,commission_paid_rmb,start_date,end_date,rebalance_events,rank_ic_horizon_trading_days,complete_rank_ic_events,mean_rank_ic,positive_rank_ic_events,initial_capital_rmb,commission_rate_pct,minimum_commission_rmb,cash_annual_yield_pct
+phase4_joint_top2_net,7.603849470585722,4.189408535804673,7.746034683878618,-6.349010995260884,124.70241662205207,2024-10-28,2026-09-02,8,20,8,0.024721191464289805,3,100000.0,0.01,5.0,1.5
+phase4_eligible_equal_weight_net,1.541286860730784,0.860215396479358,6.6613364021141654,-11.823399229716113,270.0,2024-10-28,2026-09-02,8,20,8,0.024721191464289805,3,100000.0,0.01,5.0,1.5
+reit_total_return_index_benchmark,0.6815531279759535,0.3810993340454649,8.135580049349151,-17.522207303735293,0.0,2024-10-28,2026-09-02,8,20,8,0.024721191464289805,3,100000.0,0.01,5.0,1.5

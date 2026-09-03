@@ -16,9 +16,11 @@ Phase 1的结论不是“模型有效”，而是完成了可证伪的研究。2
 
 **Phase 3：跨资产经营数据库与公告事件研究已完成，但策略不部署。** 新增180201、508018两只高速及180301、508056两只物流的110条人工核验季度经营观测，并与四只能源REIT合成73条PIT同比特征。2024Q3—2026Q2共有8个至少含6只证券的横截面；每期做多经营surprise最高2只，在双向各万一、每笔最低5元和现金年化1.5%下净收益 **+11.38%**，当期合资格证券等权 **+2.11%**、932047全收益 **+0.68%**。但平均20日rank IC仅 **0.02**、8期仅3期为正，历史universe仍只有一个快照，因此只保留为新增样本验证候选。详见[Phase 3最终结论](docs/phase3_findings.md)。
 
+**Phase 4：基金时点数据库与联合模型研究闭环已完成，但策略不部署。** 8只主样本新增343条基金指标、28条年末NAV、70次实际DPU和8,098行不复权行情。固定联合模型等权合成经营surprise、TTM DPU yield、NAV/price和20日含分派动量；top-2在2024-10-28至2026-09-02净收益 **+7.60%**，合资格等权 **+1.54%**、932047全收益 **+0.68%**。但平均20日rank IC仅 **0.025**，只有8期，且6份扫描分派公告、真实历史universe和前瞻样本外闸门未通过。详见[Phase 4结论](docs/phase4_findings.md)。
+
 **探索性策略已按2026Q2数据重算。** 策略严格保持纯多头：发电量同比为正时持有508026，否则持有现金；932047只作为业绩基准。按10万元本金、买卖双向各万一佣金、每笔最低5元、现金年化收益1.5%计算，2025-07-22至2026-08-28策略收益约 **-8.40%**；同期508026含分派且扣除买入佣金为 **-5.83%**，932047全收益基准为 **-12.67%**。策略跑赢基准但落后买入持有，5个事件中只有2次仓位选择有利，进一步说明发电量同比符号本身不是可靠 alpha。详见 [初步策略结果](docs/phase1_strategy_results.md)。
 
-**研究数据库已形成能源、高速和物流纵向试点。** 2026-08-28的 AKShare／东方财富快照观察到94只 C-REIT，其中11只证券名称和资产类型已有一手来源人工核验。沪深官方公告目录已收录8,151条元数据，覆盖94／94只证券。四只能源REIT与四只非能源REIT合计形成453条季度经营观测和73条跨资产PIT特征；高速、物流新增110条经营观测。2025年季度—年报勾稽共36项：20项完全一致、12项披露精度差异、3项年报调整、1项同名指标口径差异。三套来源登记表共159行且均已计算 SHA-256；仓库不保存原始 PDF。详见 [数据库当前状态](docs/database_status.md)、[Phase 3最终结论](docs/phase3_findings.md)、[能源扩面结论](docs/energy_database_findings.md)、[研究数据库设计](docs/database_design.md)和[数据字典](docs/data_dictionary.md)。
+**研究数据库已形成能源、高速、物流和基金时点层。** 2026-08-28快照观察到94只 C-REIT，沪深官方公告目录收录8,151条元数据并覆盖94／94只证券。四只能源与四只非能源REIT合计形成453条经营观测和73条跨资产PIT特征；Phase 4另形成343条基金指标和70次实际DPU。三套经营来源登记表共159行且均有SHA-256；基金时点层当前是正式PDF机器抽取，尚未冒充人工核验。仓库不保存原始PDF。详见[数据库当前状态](docs/database_status.md)、[Phase 4结论](docs/phase4_findings.md)和[数据字典](docs/data_dictionary.md)。
 
 ## 核心研究问题
 
@@ -71,13 +73,19 @@ Phase 1研究闭环已经完成，但没有通过可部署模型闸门。候选�
 
 对当前universe中有历史行情的88只证券构建20／60日动量、5日反转、成交额、Amihud非流动性、已实现波动率和四维组合。信号在周末／月末收盘后形成，下一交易日收盘建仓，只做多top组；932047仅为全收益基准。
 
-20日动量的月频结果在top 10%／20%／30%和最低佣金敏感性下方向一致，但统计显著性和历史universe条件不足。Phase 2到此关闭，不继续在同一区间挑参。下一阶段首先补历史证券状态、DPU、NAV、基金份额和资产类型，再用新增样本复核预先登记的月频20日动量候选。
+20日动量的月频结果在top 10%／20%／30%和最低佣金敏感性下方向一致，但统计显著性和历史universe条件不足。Phase 2到此关闭，不继续在同一区间挑参。DPU、NAV和份额已在Phase 4的8只样本中补齐，后续只用新增季度复核固定候选。
 
 ## Phase 3：跨资产经营预期
 
 稳定资产范围包括180201广河高速、508018嘉通高速、180301首发现代物流中心、508056扩募后十项物流资产，以及Phase 2的四只能源REIT。主指标采用车流量、出租率、发电量或结算电量；先计算四季度同比，再减去该证券此前已公布同比的扩展均值。
 
 报告事件分别检验20／60交易日收益；季度组合等待至少6只证券报告到齐后，只做多surprise最高2只。当前正收益没有获得强rank IC或足够历史横截面支持，程序化闸门明确返回不可部署。后续只在新增季度复核固定规则。
+
+## Phase 4：基金时点与联合模型
+
+基金指标层严格区分季度“单位可供分配金额”和分派公告“实际DPU”。P/NAV与收益率估值使用不复权价格，总收益回测使用后复权价格。联合模型固定等权、纯多头top-2，不允许在旧区间继续优化权重。
+
+Phase 4工程已完成，但`deployable=false`。从2026Q3起应前瞻冻结规则，至少追加4个新季度和12个月真实universe快照，再决定是否进入纸面跟踪。
 
 ## 快速开始
 
@@ -162,6 +170,10 @@ python -m creit_quant.phase2_market \
 python -m creit_quant.phase3 \
   --out-dir data/processed/phase3
 
+# Phase 4离线重建基金时点联合信号、净成本回测和部署闸门
+python -m creit_quant.phase4 \
+  --out-dir data/processed/phase4
+
 # 联网刷新全市场后复权行情；已有快照不会静默覆盖
 python -m creit_quant.phase2_market \
   --fetch-market \
@@ -200,6 +212,7 @@ c-reit-quant/
 │   │   ├── phase2_energy_adjusted_prices.csv
 │   │   ├── phase2_full_market_adjusted_history.csv
 │   │   ├── phase2_full_market_price_coverage.csv
+│   │   ├── phase4_unadjusted_prices.csv
 │   │   ├── reit_announcement_catalog.csv
 │   │   └── reit_universe_history.csv
 │   └── samples/
@@ -220,6 +233,13 @@ c-reit-quant/
 │       ├── phase3_announcement_event_study.csv
 │       ├── phase3_strategy_summary.csv
 │       ├── phase3_strategy_robustness.csv
+│       ├── phase4_fund_fundamentals.csv
+│       ├── phase4_distributions.csv
+│       ├── phase4_joint_signals.csv
+│       ├── phase4_strategy_summary.csv
+│       ├── phase4_strategy_robustness.csv
+│       ├── phase4_capacity.csv
+│       ├── phase4_data_gates.csv
 │       ├── 180201_quarterly_operating_metrics.csv
 │       ├── 180301_quarterly_operating_metrics.csv
 │       ├── 508018_quarterly_operating_metrics.csv
@@ -261,6 +281,7 @@ c-reit-quant/
 │   ├── phase2_energy_findings.md
 │   ├── phase2_findings.md
 │   ├── phase3_findings.md
+│   ├── phase4_findings.md
 │   └── research_plan.md
 ├── scripts/
 │   ├── run_phase0.py
@@ -273,7 +294,10 @@ c-reit-quant/
 │   ├── run_phase1_universe.py
 │   ├── run_phase2.py
 │   ├── run_phase2_market.py
-│   └── run_phase3.py
+│   ├── run_phase3.py
+│   ├── run_phase4.py
+│   ├── build_phase4_fundamentals.py
+│   └── fetch_phase4_unadjusted_prices.py
 ├── src/creit_quant/
 │   ├── database.py
 │   ├── announcements.py
@@ -296,6 +320,8 @@ c-reit-quant/
 │   ├── phase2.py
 │   ├── phase2_market.py
 │   ├── phase3.py
+│   ├── phase4.py
+│   ├── phase4_research.py
 │   ├── quality.py
 │   ├── report_parser.py
 │   ├── schema.py
@@ -328,6 +354,7 @@ c-reit-quant/
 - 508028虽已有13季度发电量，但早期结算电量和利用小时缺失，报告内平均风速只有11期；508096在2024Q4前只稳定披露项目级结算电量和电价；180401在2024Q4前未形成完整发电指标表。早期转录仍待独立二次复核。
 - 508096扩募水电的2025Q4观测只覆盖2025年12月27—31日，不能当作完整季度；光伏／水电按0.01亿千瓦时披露的数值也无法恢复更高精度。
 - Phase 2全市场收益研究使用2026-08-28当前名单回看历史；仓库只有一个universe快照，结果存在幸存者偏差，不能作为部署证据。
-- 当前94只证券中88只有历史行情，6只上游明确无历史；资产类型仅11只人工核验，DPU仅1只形成时点历史，NAV与基金份额时点面板尚未建立。
+- 当前94只证券中88只有历史行情，6只上游明确无历史；资产类型仅11只人工核验。DPU、NAV与基金份额时点面板只覆盖8只研究样本，尚未扩展到全市场。
 - Phase 3跨资产结果只有8个季度，平均20日rank IC约0.02；正收益可能由少数持仓路径驱动，不构成可部署alpha证据。
 - 508018早期通行费披露为不含税、后期标准表为含税清分口径，数据库没有强行拼接；PDF表格转录虽已逐项核验，仍应进行独立二次复核。
+- Phase 4有6份508028分派公告为无文字层扫描PDF，已排除而非补值；413条基金指标／分派观测均待独立人工复核。联合模型只有8期且没有规则冻结后的前瞻样本外季度。

@@ -218,6 +218,22 @@
 
 每个季度至少6只证券有非空surprise后才形成横截面，等待当季入选报告中最晚发布日期后再交易。基线`selected=true`仅标记最高2只，不含空头。`phase3_strategy_summary.csv`保存双向各万一、每笔最低5元和现金年化1.5%的基线；`phase3_strategy_robustness.csv`固定列出top-1/2/3、5个基点佣金、取消最低佣金和零现金收益情景，不能从中事后挑选“最优”参数。
 
+### `phase4_fund_fundamentals`
+
+粒度为证券、报告期、公告日和基金指标。`fund_shares`、`distributable_amount_quarter`和`distributable_amount_per_unit_quarter`来自季度报告；`nav_per_unit`只采用年报直接披露值，不用资产评估值倒推。`verification_status=machine_extracted_official_pdf`表示来源是正式PDF但尚未完成人工复核。
+
+### `phase4_distributions` 与排除表
+
+每次收益分配公告一行，`dpu_per_unit`由公告披露的每10份方案除以10标准化。`publication_date`控制信息可见时点，`ex_date`为场内除息日。508028的6份扫描PDF没有可用文字层，保存在`phase4_distribution_exclusions.csv`，没有推算或用季度可供分配金额替代。
+
+### `phase4_unadjusted_prices`
+
+8只主样本每个交易日一行，`adjustment=none`。该表只用于计算历史DPU yield、NAV/price和含分派20日动量；策略收益仍使用冻结的后复权快照。禁止用后复权价格的历史绝对水平计算收益率型估值。
+
+### `phase4_joint_signals` 与策略结果
+
+每个季度、每只四项数据完整的证券一行。四项百分位排名为经营surprise、TTM实际DPU yield、NAV/price和20日含分派动量，`model_score`是固定等权平均。每期至少6只，`selected=true`为最高2只。结果表同时保存双向各万一、最低5元、现金1.5%、932047基准、单因子对照、5bp成本敏感性和5% ADV容量近似。
+
 ## 数据产品
 
 数据库构建命令会生成：
@@ -248,5 +264,9 @@
 - `phase2_market_factor_robustness.csv`：20日动量参数与最低佣金敏感性；
 - `phase2_market_factor_selections.csv`：各次入选证券和5% ADV容量近似；
 - `phase2_data_gates.csv`：Phase 2未满足的数据条件。
+- `phase4_fund_fundamentals.csv`：105份季度报告三项指标与28条年末NAV；
+- `phase4_distributions.csv`及排除表：70次实际DPU和6份不可读扫描公告；
+- `phase4_joint_signals.csv`：8期53条四因子完整横截面；
+- `phase4_strategy_summary.csv`、稳健性、容量与闸门表：联合纯多头研究结果。
 
-Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2派生表随冻结行情提交，能源结果可由`python -m creit_quant.phase2`离线重建，全市场结果可由`python -m creit_quant.phase2_market`离线重建。
+Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2派生表随冻结行情提交，能源结果可由`python -m creit_quant.phase2`离线重建，全市场结果可由`python -m creit_quant.phase2_market`离线重建。Phase 4联合结果可由`python -m creit_quant.phase4`离线重建；基金指标原始PDF仍只在仓库外受控保存。

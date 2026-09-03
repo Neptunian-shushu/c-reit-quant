@@ -1,0 +1,8 @@
+gate,observed,required,passed,reason,deployable
+historical_universe_snapshots,1,12,False,真实月末名单，不能用当前名单回填,False
+joint_cross_sections,8,12,False,至少12个预注册联合横截面,False
+point_in_time_nav_securities,8,8,True,八只样本均有公告日NAV,False
+point_in_time_share_securities,8,8,True,八只样本均有公告日份额,False
+distribution_securities,8,8,True,八只样本均有实际DPU事件,False
+distribution_extraction_exclusions,6,0,False,扫描PDF排除项必须人工或OCR复核清零,False
+prospective_out_of_sample_quarters,0,4,False,Phase 4规则冻结后的新增季度,False
