@@ -182,6 +182,18 @@
 
 能源证券快照粒度为每只证券每个交易日一行，使用东方财富后复权参数并保存抓取时间；932047快照来自中证指数官网，`index_kind=total_return`。后复权序列只能在保存的快照内复现，未来刷新可能因新增分派改变历史价格尺度，因此不得静默覆盖研究版本。
 
+全市场快照`phase2_full_market_adjusted_history.csv`增加`turnover`、`turnover_rate_pct`和`universe_snapshot_date`等字段；覆盖表`phase2_full_market_price_coverage.csv`为当前universe每只证券一行，`status`区分`available`和`no_history`。空历史证券不会在行情表中生成占位价格。
+
+### `phase2_market_factor_signals`
+
+粒度：每个周末／月末、每只满足80日历史和20日平均成交额100万元条件的证券一行。所有因子只使用当日及此前行情；`forward_return_20d`仅作事后评价，不参与排名。组合在下一交易日收盘建仓。
+
+### `phase2_market_factor_summary`
+
+粒度：频率与因子一行。保存净收益、年化收益／波动、最大回撤、相对当前名单等权与932047的收益、20日rank IC及朴素t值、佣金、换手和5% ADV容量近似。周频前瞻标签重叠，朴素t值没有HAC修正。所有策略均为纯多头。
+
+`phase2_market_factor_robustness.csv`固定比较20日动量top 10%／20%／30%及最低佣金0／5元；`phase2_data_gates.csv`记录不能执行的历史universe、资产类型、DPU、NAV与国债vintage条件。
+
 ### `phase2_strategy_events`
 
 粒度：每个季度横截面每只证券一行。组合持有期截至下一次再平衡；rank IC固定使用20个共同交易日的前瞻收益，避免公告间隔不同或最后一期尚未结束造成标签长度不一致。
@@ -207,5 +219,10 @@
 - `phase2_energy_cross_section_signals.csv`：8个季度、28条横截面排名；
 - `phase2_energy_strategy_events.csv`：固定20交易日前瞻收益及事件持有收益；
 - `phase2_energy_strategy_summary.csv`：含佣金、现金收益和两个基准的组合汇总。
+- `phase2_market_factor_signals.csv`：周／月频市场因子横截面；
+- `phase2_market_factor_summary.csv`：14组纯多头因子结果；
+- `phase2_market_factor_robustness.csv`：20日动量参数与最低佣金敏感性；
+- `phase2_market_factor_selections.csv`：各次入选证券和5% ADV容量近似；
+- `phase2_data_gates.csv`：Phase 2未满足的数据条件。
 
-Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2四张小型派生表随真实行情快照提交，作为当前负结果的精确研究版本；都可以由`python -m creit_quant.phase2`离线重建。
+Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2派生表随冻结行情提交，能源结果可由`python -m creit_quant.phase2`离线重建，全市场结果可由`python -m creit_quant.phase2_market`离线重建。

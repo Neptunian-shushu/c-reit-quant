@@ -12,6 +12,8 @@ Phase 1的结论不是“模型有效”，而是完成了可证伪的研究。2
 
 **Phase 2A：能源REIT point-in-time横截面基线已完成。** 508026、508028、508096和180401形成35条同口径同比特征及2024Q3—2026Q2共8个季度横截面。每期等待全部入选证券公告后，在下一个共同交易日收盘做多经营surprise最高的1只证券，不做空；按10万元、双向各万一、每笔最低5元和现金年化1.5%计算，截至2026-09-02组合净收益为 **-5.01%**，同期能源等权为 **+4.53%**，932047全收益指数为 **+0.68%**。固定20交易日前瞻收益的平均rank IC为 **-0.4875**，8期均未出现正rank IC。简单经营surprise没有形成alpha证据，详见[Phase 2能源横截面结论](docs/phase2_energy_findings.md)。
 
+**Phase 2B与Phase 2整体研究范围已完成，但策略未达到部署条件。** 已冻结2021-06-21至2026-09-02共50,863行全市场后复权行情；94只当前universe中88只有真实历史，6只明确无历史。月频20日动量top 20%纯多头组合在双向各万一、每笔最低5元和现金年化1.5%下净收益 **+16.39%**，同期当前名单可交易等权 **+0.83%**、932047全收益 **+3.45%**。但平均20日rank IC仅0.0496、朴素t值1.075，而且只有一个历史universe快照；资产类型、DPU、NAV和国债vintage闸门也全部未通过。该结果只登记为新增样本待验证候选，详见[Phase 2最终结论](docs/phase2_findings.md)。
+
 **探索性策略已按2026Q2数据重算。** 策略严格保持纯多头：发电量同比为正时持有508026，否则持有现金；932047只作为业绩基准。按10万元本金、买卖双向各万一佣金、每笔最低5元、现金年化收益1.5%计算，2025-07-22至2026-08-28策略收益约 **-8.40%**；同期508026含分派且扣除买入佣金为 **-5.83%**，932047全收益基准为 **-12.67%**。策略跑赢基准但落后买入持有，5个事件中只有2次仓位选择有利，进一步说明发电量同比符号本身不是可靠 alpha。详见 [初步策略结果](docs/phase1_strategy_results.md)。
 
 **研究数据库已形成能源纵向试点。** 2026-08-28的 AKShare／东方财富快照观察到94只 C-REIT，其中9只证券名称和资产类型已有一手来源人工核验。沪深官方公告目录已收录8,151条元数据，覆盖94／94只证券。508026现有36条上市后季度观测和55条上市前经营观测；三类资产规范种子有20条真实观测。能源横截面覆盖3只REIT、6项底层资产和39条2026Q2经营观测；三条能源纵向面板合计307条：508028海上风电86条、508096光伏／扩募水电146条、180401燃气发电75条。2025年季度—年报勾稽共36项：20项完全一致、12项披露精度差异、3项年报调整、1项同名指标口径差异。正式登记来源文档共131份且均已计算 SHA-256，其中能源扩面61份。仓库不保存原始 PDF。详见 [数据库当前状态](docs/database_status.md)、[能源扩面结论](docs/energy_database_findings.md)、[研究数据库设计](docs/database_design.md)和[数据字典](docs/data_dictionary.md)。
@@ -62,6 +64,12 @@ Phase 1研究闭环已经完成，但没有通过可部署模型闸门。候选�
 当前横截面只使用稳定资产范围：508026五一桥水电、508028滨海北海上风电、508096两项首发光伏和180401东部燃气电厂。主指标分别采用发电量或结算电量；先计算四季度同比，再减去该证券此前已公布同比的扩展均值。四季度前值严格按当次公告日有效版本读取。
 
 每期在全部入选证券报告公布后统一决策，下一个共同交易日收盘换仓，只持有最高surprise证券；能源等权组合和932047全收益指数用于比较。当前负结果说明该简单定义不值得继续调参，但PIT数据库、横截面事件和成本引擎可以复用于后续估值及更合理的经营预期研究。
+
+## Phase 2B：全市场价格与流动性因子
+
+对当前universe中有历史行情的88只证券构建20／60日动量、5日反转、成交额、Amihud非流动性、已实现波动率和四维组合。信号在周末／月末收盘后形成，下一交易日收盘建仓，只做多top组；932047仅为全收益基准。
+
+20日动量的月频结果在top 10%／20%／30%和最低佣金敏感性下方向一致，但统计显著性和历史universe条件不足。Phase 2到此关闭，不继续在同一区间挑参。下一阶段首先补历史证券状态、DPU、NAV、基金份额和资产类型，再用新增样本复核预先登记的月频20日动量候选。
 
 ## 快速开始
 
@@ -138,6 +146,16 @@ python -m creit_quant.phase2 \
   --replace-market-snapshot \
   --end-date 20260902
 
+# Phase 2B离线重建全市场周／月频因子、纯多头回测和数据闸门
+python -m creit_quant.phase2_market \
+  --out-dir data/processed/phase2_market
+
+# 联网刷新全市场后复权行情；已有快照不会静默覆盖
+python -m creit_quant.phase2_market \
+  --fetch-market \
+  --replace-market-snapshot \
+  --end-date 20260902
+
 # 联网获取固定ERA5再分析天气并生成本地连接面板
 python -m creit_quant.phase1 \
   --fetch-weather \
@@ -167,6 +185,8 @@ c-reit-quant/
 │   ├── snapshots/
 │   │   ├── phase2_932047_total_return.csv
 │   │   ├── phase2_energy_adjusted_prices.csv
+│   │   ├── phase2_full_market_adjusted_history.csv
+│   │   ├── phase2_full_market_price_coverage.csv
 │   │   ├── reit_announcement_catalog.csv
 │   │   └── reit_universe_history.csv
 │   └── samples/
@@ -175,6 +195,11 @@ c-reit-quant/
 │       ├── phase2_energy_point_in_time_features.csv
 │       ├── phase2_energy_strategy_events.csv
 │       ├── phase2_energy_strategy_summary.csv
+│       ├── phase2_market_factor_signals.csv
+│       ├── phase2_market_factor_summary.csv
+│       ├── phase2_market_factor_robustness.csv
+│       ├── phase2_market_factor_selections.csv
+│       ├── phase2_data_gates.csv
 │       ├── reit_master.csv
 │       ├── 508026_asset_metadata.csv
 │       ├── 508026_distributions.csv
@@ -210,6 +235,7 @@ c-reit-quant/
 │   ├── phase1_hydropower_findings.md
 │   ├── phase1_strategy_results.md
 │   ├── phase2_energy_findings.md
+│   ├── phase2_findings.md
 │   └── research_plan.md
 ├── scripts/
 │   ├── run_phase0.py
@@ -220,7 +246,8 @@ c-reit-quant/
 │   ├── run_phase1_quality.py
 │   ├── run_phase1_strategy.py
 │   ├── run_phase1_universe.py
-│   └── run_phase2.py
+│   ├── run_phase2.py
+│   └── run_phase2_market.py
 ├── src/creit_quant/
 │   ├── database.py
 │   ├── announcements.py
@@ -229,6 +256,7 @@ c-reit-quant/
 │   ├── hydropower.py
 │   ├── hydropower_model.py
 │   ├── market.py
+│   ├── market_factor_research.py
 │   ├── master_data.py
 │   ├── phase0.py
 │   ├── phase1.py
@@ -239,6 +267,7 @@ c-reit-quant/
 │   ├── phase1_strategy.py
 │   ├── phase1_universe.py
 │   ├── phase2.py
+│   ├── phase2_market.py
 │   ├── quality.py
 │   ├── report_parser.py
 │   ├── schema.py
@@ -270,3 +299,5 @@ c-reit-quant/
 - MERIT自动流域已经用于敏感性分析，但其1930平方公里面积较正式披露1642平方公里高17.54%，不能升级为官方边界；真实来水、溪古水库调度和检修仍缺失。
 - 508028虽已有13季度发电量，但早期结算电量和利用小时缺失，报告内平均风速只有11期；508096在2024Q4前只稳定披露项目级结算电量和电价；180401在2024Q4前未形成完整发电指标表。早期转录仍待独立二次复核。
 - 508096扩募水电的2025Q4观测只覆盖2025年12月27—31日，不能当作完整季度；光伏／水电按0.01亿千瓦时披露的数值也无法恢复更高精度。
+- Phase 2全市场收益研究使用2026-08-28当前名单回看历史；仓库只有一个universe快照，结果存在幸存者偏差，不能作为部署证据。
+- 当前94只证券中88只有历史行情，6只上游明确无历史；资产类型仅9只人工核验，DPU仅1只形成时点历史，NAV与基金份额时点面板尚未建立。
