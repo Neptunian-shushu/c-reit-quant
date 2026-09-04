@@ -32,6 +32,22 @@ def test_universe_normalises_newer_akshare_column_aliases(mock_endpoint):
     assert frame.loc[0, "low"] == 2.0
 
 
+@patch("creit_quant.market.time.sleep")
+@patch("creit_quant.market.ak.reits_realtime_em")
+def test_universe_retries_transient_upstream_disconnect(mock_endpoint, mock_sleep):
+    mock_endpoint.side_effect = [
+        ConnectionError("disconnect"),
+        ConnectionError("disconnect"),
+        pd.DataFrame({"代码": [508026], "名称": ["sample"]}),
+    ]
+
+    frame = fetch_reit_universe(attempts=3, retry_delay=0.1)
+
+    assert frame.loc[0, "symbol"] == "508026"
+    assert mock_endpoint.call_count == 3
+    assert mock_sleep.call_count == 2
+
+
 def test_history_normalises_current_akshare_columns(monkeypatch):
     endpoint = lambda symbol: pd.DataFrame(  # noqa: E731 - compact test double
         {

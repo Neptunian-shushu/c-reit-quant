@@ -20,6 +20,29 @@ DEFAULT_UNADJUSTED_PRICES_PATH = (
 )
 
 
+def count_prospective_quarters(
+    signals: pd.DataFrame,
+    *,
+    frozen_at: str | pd.Timestamp,
+    first_period_end: str | pd.Timestamp,
+) -> int:
+    """统计规则冻结后新形成、且决策日在冻结时点之后的季度。"""
+
+    if signals.empty:
+        return 0
+    frame = signals.copy()
+    frame["period_end"] = pd.to_datetime(frame["period_end"], errors="raise")
+    frame["decision_date"] = pd.to_datetime(frame["decision_date"], errors="raise")
+    freeze = pd.Timestamp(frozen_at)
+    if freeze.tzinfo is not None:
+        freeze = freeze.tz_localize(None)
+    first = pd.Timestamp(first_period_end)
+    eligible = frame.loc[
+        frame["period_end"].ge(first) & frame["decision_date"].gt(freeze)
+    ]
+    return int(eligible["period_end"].nunique())
+
+
 def load_fund_fundamentals(
     path: str | Path = DEFAULT_FUNDAMENTALS_PATH,
 ) -> pd.DataFrame:
@@ -425,6 +448,8 @@ def build_phase4_gates(
     *,
     universe_snapshots: int,
     distribution_exclusions: int,
+    independent_reviewed_observations: int = 0,
+    prospective_quarters: int = 0,
 ) -> pd.DataFrame:
     """Phase 4完成不等于策略可部署；所有关键数据门槛逐项输出。"""
 
@@ -451,7 +476,18 @@ def build_phase4_gates(
             0,
             "扫描PDF排除项必须人工或OCR复核清零",
         ),
-        ("prospective_out_of_sample_quarters", 0, 4, "Phase 4规则冻结后的新增季度"),
+        (
+            "independent_reviewed_observations",
+            independent_reviewed_observations,
+            len(fundamentals) + len(distributions),
+            "全部Phase 4观测须经独立二次复核",
+        ),
+        (
+            "prospective_out_of_sample_quarters",
+            prospective_quarters,
+            4,
+            "Phase 4规则冻结后的新增季度",
+        ),
     ]
     rows = [
         {

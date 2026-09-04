@@ -124,6 +124,29 @@ def test_data_gates_expose_current_universe_bias_and_valuation_gaps():
     assert gates.loc["point_in_time_nav_history", "observed"] == 0
 
 
+def test_data_gates_accept_official_listing_date_membership_history():
+    history = pd.DataFrame(
+        {"snapshot_date": ["2026-08-28"] * 2, "symbol": ["a", "b"]}
+    )
+    membership = pd.DataFrame(
+        {
+            "snapshot_date": pd.date_range("2025-08-31", periods=12, freq="ME"),
+            "symbol": ["a"] * 12,
+        }
+    )
+    prices, _ = _prices(symbols=("a", "b"), periods=2)
+
+    gates = build_phase2_data_gates(
+        history,
+        prices,
+        verified_asset_type_count=1,
+        verified_distribution_security_count=1,
+        reconstructed_membership=membership,
+    ).set_index("gate")
+
+    assert gates.loc["historical_universe_snapshots", "status"] == "pass"
+
+
 def test_unchanged_weekly_holdings_do_not_generate_rebalance_fees():
     prices, dates = _prices(periods=180)
     panel = build_market_factor_panel(prices)

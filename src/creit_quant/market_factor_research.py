@@ -463,6 +463,7 @@ def build_phase2_data_gates(
     *,
     verified_asset_type_count: int,
     verified_distribution_security_count: int,
+    reconstructed_membership: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """把Phase 2能否研究与能否部署所需的数据条件显式化。"""
 
@@ -471,9 +472,16 @@ def build_phase2_data_gates(
         snapshots.eq(snapshots.max()), "symbol"
     ].astype(str)
     priced_symbols = set(prices["symbol"].astype(str))
+    historical_snapshots = snapshots.nunique()
+    historical_reason = "至少12个月末快照，避免用当前名单回填历史"
+    if reconstructed_membership is not None:
+        historical_snapshots = pd.to_datetime(
+            reconstructed_membership["snapshot_date"], errors="raise"
+        ).nunique()
+        historical_reason = "按交易所正式上市日重建的月末可交易名单"
     rows = [
         ("current_universe_price_coverage", len(set(current_symbols) & priced_symbols), len(set(current_symbols)), "pass" if set(current_symbols).issubset(priced_symbols) else "fail", "当前快照证券均需有真实历史行情"),
-        ("historical_universe_snapshots", snapshots.nunique(), 12, "pass" if snapshots.nunique() >= 12 else "fail", "至少12个月末快照，避免用当前名单回填历史"),
+        ("historical_universe_snapshots", historical_snapshots, 12, "pass" if historical_snapshots >= 12 else "fail", historical_reason),
         ("verified_asset_types", verified_asset_type_count, len(set(current_symbols)), "pass" if verified_asset_type_count == len(set(current_symbols)) else "fail", "资产类型中性研究要求全部人工核验"),
         ("point_in_time_distribution_history", verified_distribution_security_count, len(set(current_symbols)), "pass" if verified_distribution_security_count == len(set(current_symbols)) else "fail", "分派收益率要求公告日和除息日历史"),
         ("point_in_time_nav_history", 0, len(set(current_symbols)), "fail", "P/NAV要求报告期、发布日期和基金份额版本"),

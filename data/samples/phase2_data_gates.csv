@@ -1,7 +1,7 @@
 gate,observed,required,status,reason
 current_universe_price_coverage,88,94,fail,当前快照证券均需有真实历史行情
-historical_universe_snapshots,1,12,fail,至少12个月末快照，避免用当前名单回填历史
-verified_asset_types,9,94,fail,资产类型中性研究要求全部人工核验
+historical_universe_snapshots,63,12,pass,按交易所正式上市日重建的月末可交易名单
+verified_asset_types,11,94,fail,资产类型中性研究要求全部人工核验
 point_in_time_distribution_history,1,94,fail,分派收益率要求公告日和除息日历史
 point_in_time_nav_history,0,94,fail,P/NAV要求报告期、发布日期和基金份额版本
 government_bond_vintage,0,1,fail,利差因子需要当时可得的同期限国债收益率版本

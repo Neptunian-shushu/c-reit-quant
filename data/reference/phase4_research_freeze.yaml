@@ -1,0 +1,25 @@
+research_id: phase4_joint_top2_v1
+frozen_at: "2026-09-05T00:00:00+08:00"
+baseline_commit: c2d37774e1f4b2b71df08c7ca32569a4cca5e975
+training_data_period_end: "2026-06-30"
+first_prospective_period_end: "2026-09-30"
+portfolio:
+  direction: long_only
+  holdings: 2
+  rebalance: first_common_trading_close_after_all_reports_known
+factors:
+  operating_surprise_weight: 0.25
+  trailing_12m_dpu_yield_weight: 0.25
+  nav_to_price_weight: 0.25
+  total_return_momentum_20d_weight: 0.25
+costs:
+  commission_rate_each_side: 0.0001
+  minimum_commission_rmb: 5.0
+  cash_annual_yield: 0.015
+benchmarks:
+  primary: eligible_reit_equal_weight_total_return
+  secondary: "932047_total_return_index"
+governance:
+  minimum_joint_cross_sections: 12
+  minimum_prospective_quarters: 4
+  forbid_post_freeze_weight_tuning: true

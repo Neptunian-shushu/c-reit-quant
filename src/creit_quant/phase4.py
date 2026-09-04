@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from creit_quant.energy_research import load_market_snapshot
 from creit_quant.operating_research import (
@@ -21,6 +22,7 @@ from creit_quant.phase4_research import (
     audit_phase4_database,
     build_phase4_gates,
     build_phase4_joint_signals,
+    count_prospective_quarters,
     load_fund_fundamentals,
     load_phase4_distributions,
     load_unadjusted_prices,
@@ -28,9 +30,13 @@ from creit_quant.phase4_research import (
     run_phase4_robustness,
     summarize_phase4_capacity,
 )
+from creit_quant.verification import summarize_verification_queue
 
 
 ROOT = Path(__file__).resolve().parents[2]
+MEMBERSHIP_PATH = ROOT / "data" / "samples" / "reit_tradable_universe_monthly.csv"
+REVIEW_PATH = ROOT / "data" / "samples" / "phase4_verification_queue.csv"
+FREEZE_PATH = ROOT / "data" / "reference" / "phase4_research_freeze.yaml"
 
 
 def main() -> None:
@@ -71,17 +77,35 @@ def main() -> None:
     exclusions = pd.read_csv(
         DEFAULT_DISTRIBUTION_EXCLUSIONS_PATH, dtype={"symbol": str}
     )
-    universe = pd.read_csv(
-        ROOT / "data" / "snapshots" / "reit_universe_history.csv", dtype={"symbol": str}
+    membership = pd.read_csv(MEMBERSHIP_PATH, dtype={"symbol": str})
+    reviews = pd.read_csv(REVIEW_PATH, dtype=str, keep_default_na=False)
+    review_summary = summarize_verification_queue(reviews)
+    with FREEZE_PATH.open(encoding="utf-8") as file:
+        freeze = yaml.safe_load(file)
+    prospective_quarters = count_prospective_quarters(
+        signals,
+        frozen_at=freeze["frozen_at"],
+        first_period_end=freeze["first_prospective_period_end"],
     )
     gates = build_phase4_gates(
         signals,
         fundamentals,
         distributions,
-        universe_snapshots=pd.to_datetime(universe["snapshot_date"]).nunique(),
+        universe_snapshots=pd.to_datetime(membership["snapshot_date"]).nunique(),
         distribution_exclusions=len(exclusions),
+        independent_reviewed_observations=review_summary["confirmed"],
+        prospective_quarters=prospective_quarters,
     )
     audit = audit_phase4_database(fundamentals, distributions)
+    audit.update(
+        {
+            "source_documents": reviews["source_url"].nunique(),
+            "source_documents_hashed": reviews.loc[
+                reviews["source_sha256"].ne(""), "source_url"
+            ].nunique(),
+            "independent_reviewed_observations": review_summary["confirmed"],
+        }
+    )
 
     print(f"Phase 4数据库审计: {audit}")
     print(
@@ -95,7 +119,7 @@ def main() -> None:
     print(gates.to_string(index=False))
     print(
         "\n结论：Phase 4数据库和研究代码闭环完成，但不部署。"
-        "扫描PDF缺口已完成视觉复核；历史universe、12期横截面及"
+        "扫描PDF缺口和历史成员重建已完成；独立二次复核、12期横截面及"
         "前瞻样本外季度仍未过闸门。"
     )
 

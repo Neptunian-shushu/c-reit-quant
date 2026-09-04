@@ -1,2 +1,2 @@
-securities,quarterly_reports,fundamental_observations,nav_observations,nav_securities,distribution_events,distribution_securities,machine_extracted_observations,visual_verified_observations,human_verified_observations
-8,105,343,28,8,76,8,413,6,0
+securities,quarterly_reports,fundamental_observations,nav_observations,nav_securities,distribution_events,distribution_securities,machine_extracted_observations,visual_verified_observations,human_verified_observations,source_documents,source_documents_hashed,independent_reviewed_observations
+8,105,343,28,8,76,8,413,6,0,209,209,0

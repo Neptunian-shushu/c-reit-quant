@@ -102,7 +102,9 @@ def test_phase3_snapshot_reproduces_research_baseline_and_blocks_deployment():
         signals, prices, benchmark
     )
     result = summary.set_index("portfolio")
-    gates = summarize_phase3_gates(features, signals, event_study)
+    gates = summarize_phase3_gates(
+        features, signals, event_study, historical_universe_snapshots=63
+    )
 
     assert result.loc[
         "cross_asset_top_surprise_net", "total_return_pct"
@@ -116,6 +118,6 @@ def test_phase3_snapshot_reproduces_research_baseline_and_blocks_deployment():
     assert summary["cash_annual_yield_pct"].eq(1.5).all()
     assert summary["commission_rate_pct"].eq(0.01).all()
     assert not gates["deployable"].any()
-    assert not gates.set_index("gate").loc["historical_universe_snapshots", "passed"]
+    assert gates.set_index("gate").loc["historical_universe_snapshots", "passed"]
     assert events["selected"].sum() == 16
     assert daily["strategy_value"].gt(0).all()

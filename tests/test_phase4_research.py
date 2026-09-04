@@ -15,6 +15,7 @@ from creit_quant.phase4_research import (
     audit_phase4_database,
     build_phase4_gates,
     build_phase4_joint_signals,
+    count_prospective_quarters,
     load_fund_fundamentals,
     load_phase4_distributions,
     load_unadjusted_prices,
@@ -118,19 +119,42 @@ def test_phase4_capacity_and_gates_block_deployment():
         signals,
         fundamentals,
         distributions,
-        universe_snapshots=1,
+        universe_snapshots=63,
         distribution_exclusions=0,
+        independent_reviewed_observations=0,
+        prospective_quarters=0,
     )
 
     assert len(capacity) == 8
     assert capacity["capacity_at_5pct_adv_rmb"].min() == pytest.approx(416093.386455)
     assert gates.set_index("gate").loc["point_in_time_nav_securities", "passed"]
     assert gates.set_index("gate").loc["distribution_extraction_exclusions", "passed"]
-    assert not gates.set_index("gate").loc["historical_universe_snapshots", "passed"]
+    assert gates.set_index("gate").loc["historical_universe_snapshots", "passed"]
+    assert not gates.set_index("gate").loc[
+        "independent_reviewed_observations", "passed"
+    ]
     assert not gates.set_index("gate").loc[
         "prospective_out_of_sample_quarters", "passed"
     ]
     assert not gates["deployable"].any()
+
+
+def test_prospective_quarters_only_count_after_frozen_rule():
+    signals = pd.DataFrame(
+        {
+            "period_end": ["2026-06-30", "2026-09-30", "2026-09-30"],
+            "decision_date": ["2026-07-21", "2026-10-25", "2026-10-25"],
+        }
+    )
+
+    assert (
+        count_prospective_quarters(
+            signals,
+            frozen_at="2026-09-05T00:00:00+08:00",
+            first_period_end="2026-09-30",
+        )
+        == 1
+    )
 
 
 def test_fundamental_loader_rejects_bad_units(tmp_path):

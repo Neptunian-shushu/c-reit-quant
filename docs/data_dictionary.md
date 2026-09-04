@@ -194,6 +194,8 @@
 
 `phase2_market_factor_robustness.csv`固定比较20日动量top 10%／20%／30%及最低佣金0／5元；`phase2_data_gates.csv`记录不能执行的历史universe、资产类型、DPU、NAV与国债vintage条件。
 
+`reit_official_listing_records.csv`每只正式上市证券一行。87只的`evidence_method=official_listing_notice_title`，上市提示公告日直接作为交易日；508008因公告书无文字层，使用第4页视觉核验覆盖。`reit_tradable_universe_monthly.csv`按这些正式上市日展开到已完成月末，未上市产品不生成成员行。当前未发现终止上市事件；未来出现时必须先扩展终止日期模型，不能继续假设永久存续。
+
 ### `phase2_strategy_events`
 
 粒度：每个季度横截面每只证券一行。组合持有期截至下一次再平衡；rank IC固定使用20个共同交易日的前瞻收益，避免公告间隔不同或最后一期尚未结束造成标签长度不一致。
@@ -266,6 +268,9 @@
 - `phase2_data_gates.csv`：Phase 2未满足的数据条件。
 - `phase4_fund_fundamentals.csv`：105份季度报告三项指标与28条年末NAV；
 - `phase4_distributions.csv`及视觉覆盖表：76次实际DPU，其中6次来自扫描公告逐页复核；
+- `phase4_source_registry.csv`：209个去重官方URL的抓取状态、SHA-256、内容类型和长度；
+- `phase4_verification_queue.csv`：419条观测的稳定ID与独立复核状态；完成状态必须填写复核人和时间；
+- `phase4_research_freeze.yaml`：2026-09-05冻结的因子权重、成本、基准、首个前瞻季度和部署门槛；
 - `phase4_joint_signals.csv`：8期60条四因子完整横截面；
 - `phase4_strategy_summary.csv`、稳健性、容量与闸门表：联合纯多头研究结果。
 

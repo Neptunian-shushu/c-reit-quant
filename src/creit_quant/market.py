@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 
 import akshare as ak
 import pandas as pd
@@ -65,7 +66,9 @@ def _normalise_columns(frame: pd.DataFrame, mapping: dict[str, str]) -> pd.DataF
     return result
 
 
-def fetch_reit_universe() -> pd.DataFrame:
+def fetch_reit_universe(
+    *, attempts: int = 3, retry_delay: float = 0.5
+) -> pd.DataFrame:
     """Fetch the current full-market C-REIT quote table from AKShare.
 
     The result doubles as the current universe snapshot. Column names exposed
@@ -73,13 +76,22 @@ def fetch_reit_universe() -> pd.DataFrame:
     columns are retained because upstream fields may change.
     """
 
-    try:
-        frame = ak.reits_realtime_em()
-    except Exception as exc:  # AKShare wraps several network/parser errors.
-        raise MarketDataError(f"AKShare C-REIT universe request failed: {exc}") from exc
-    if frame is None or frame.empty:
-        raise MarketDataError("AKShare returned an empty C-REIT universe table")
-    return _normalise_columns(frame, UNIVERSE_COLUMNS)
+    if attempts <= 0 or retry_delay < 0:
+        raise ValueError("attempts必须为正整数且retry_delay不能为负")
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            frame = ak.reits_realtime_em()
+            if frame is None or frame.empty:
+                raise RuntimeError("AKShare returned an empty C-REIT universe table")
+            return _normalise_columns(frame, UNIVERSE_COLUMNS)
+        except Exception as exc:  # AKShare wraps several network/parser errors.
+            last_error = exc
+            if attempt < attempts:
+                time.sleep(retry_delay)
+    raise MarketDataError(
+        f"AKShare C-REIT universe request failed after {attempts} attempts: {last_error}"
+    ) from last_error
 
 
 def fetch_reit_history(symbol: str) -> pd.DataFrame:

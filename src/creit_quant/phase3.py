@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import pandas as pd
+
 from creit_quant.energy_research import load_market_snapshot
 from creit_quant.operating_research import (
     DEFAULT_BENCHMARK_PRICE_PATH,
@@ -20,6 +22,9 @@ from creit_quant.operating_research import (
     summarize_announcement_event_study,
     summarize_phase3_gates,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
+MEMBERSHIP_PATH = ROOT / "data" / "samples" / "reit_tradable_universe_monthly.csv"
 
 
 def main() -> None:
@@ -52,7 +57,15 @@ def main() -> None:
         minimum_commission=args.minimum_commission,
         cash_annual_yield=args.cash_yield,
     )
-    gates = summarize_phase3_gates(features, signals, event_study)
+    membership = pd.read_csv(MEMBERSHIP_PATH, dtype={"symbol": str})
+    gates = summarize_phase3_gates(
+        features,
+        signals,
+        event_study,
+        historical_universe_snapshots=pd.to_datetime(
+            membership["snapshot_date"]
+        ).nunique(),
+    )
     robustness = run_phase3_robustness(features, selected_prices, benchmark)
 
     print(
@@ -69,8 +82,8 @@ def main() -> None:
     print("\n稳健性检验")
     print(robustness.to_string(index=False, float_format=lambda value: f"{value:.2f}"))
     print(
-        "\n结论：该结果是研究样本，不是可部署策略。历史universe、横截面期数和"
-        "分派/NAV覆盖仍未通过部署闸门。"
+        "\n结论：该结果是研究样本，不是可部署策略。历史成员重建已通过；"
+        "横截面期数和分派/NAV覆盖仍未通过部署闸门。"
     )
 
     if args.out_dir:

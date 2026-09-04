@@ -310,3 +310,23 @@ def load_announcement_catalog(path: str | Path) -> pd.DataFrame:
     return frame.sort_values(["symbol", "publication_date", "announcement_id"]).reset_index(
         drop=True
     )
+
+
+def incremental_catalog_start_date(
+    catalog: pd.DataFrame | None,
+    symbol: str,
+    *,
+    fallback: str = "2021-01-01",
+    overlap_days: int = 7,
+) -> str:
+    """返回单只证券的增量抓取起点，并保留重叠窗口吸收迟到修订。"""
+
+    if overlap_days < 0:
+        raise ValueError("overlap_days不能为负")
+    if catalog is None or catalog.empty:
+        return pd.Timestamp(fallback).strftime("%Y-%m-%d")
+    frame = catalog.loc[catalog["symbol"].astype(str).eq(str(symbol))]
+    if frame.empty:
+        return pd.Timestamp(fallback).strftime("%Y-%m-%d")
+    latest = pd.to_datetime(frame["publication_date"], errors="raise").max()
+    return (latest - pd.Timedelta(days=overlap_days)).strftime("%Y-%m-%d")

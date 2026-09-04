@@ -11,6 +11,7 @@ import pandas as pd
 from creit_quant.announcements import (
     fetch_sse_reit_announcements,
     fetch_szse_reit_announcements,
+    incremental_catalog_start_date,
     load_announcement_catalog,
     merge_announcement_catalogs,
 )
@@ -27,7 +28,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--universe-history", default=str(DEFAULT_HISTORY_PATH))
     parser.add_argument("--catalog", default=str(DEFAULT_CATALOG_PATH))
-    parser.add_argument("--start-date", default="2021-01-01")
+    parser.add_argument("--start-date", help="显式全量起点；省略时按各证券最后公告日前7日增量抓取")
+    parser.add_argument("--fallback-start-date", default="2021-01-01")
+    parser.add_argument("--overlap-days", type=int, default=7)
     parser.add_argument("--end-date", default=date.today().isoformat())
     parser.add_argument("--symbols", nargs="*", help="可选 REIT 代码；默认最新快照全部 REIT")
     parser.add_argument("--exchange", choices=["all", "SSE", "SZSE"], default="all")
@@ -62,9 +65,15 @@ def main() -> None:
                 if str(symbol).startswith("508")
                 else fetch_szse_reit_announcements
             )
+            start_date = args.start_date or incremental_catalog_start_date(
+                existing,
+                symbol,
+                fallback=args.fallback_start_date,
+                overlap_days=args.overlap_days,
+            )
             frame = fetcher(
                 symbol,
-                args.start_date,
+                start_date,
                 args.end_date,
                 timeout=args.timeout,
             )
@@ -72,7 +81,7 @@ def main() -> None:
             failures.append((symbol, str(exc)))
             continue
         frames.append(frame)
-        print(f"{symbol}: {len(frame)} 份公告")
+        print(f"{symbol}: {start_date}起 {len(frame)} 份公告")
     if frames:
         new = pd.concat(frames, ignore_index=True)
         catalog = merge_announcement_catalogs(existing, new)

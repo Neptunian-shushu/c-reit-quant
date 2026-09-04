@@ -6,9 +6,24 @@ import pytest
 from creit_quant.announcements import (
     fetch_sse_reit_announcements,
     fetch_szse_reit_announcements,
+    incremental_catalog_start_date,
     merge_announcement_catalogs,
     reclassify_announcement_catalog,
 )
+
+
+def test_incremental_catalog_window_overlaps_latest_observation():
+    catalog = pd.DataFrame(
+        {
+            "symbol": ["508026", "508026"],
+            "publication_date": ["2026-07-21", "2026-08-28"],
+        }
+    )
+
+    assert incremental_catalog_start_date(catalog, "508026") == "2026-08-21"
+    assert incremental_catalog_start_date(catalog, "180201") == "2021-01-01"
+    with pytest.raises(ValueError, match="不能为负"):
+        incremental_catalog_start_date(catalog, "508026", overlap_days=-1)
 
 
 def test_sse_catalog_classifies_reports_but_keeps_them_unreviewed():
@@ -38,7 +53,10 @@ def test_sse_catalog_classifies_reports_but_keeps_them_unreviewed():
     assert frame.loc[0, "document_type_candidate"] == "quarterly_report"
     assert frame.loc[0, "period_end_candidate"] == "2026-06-30"
     assert frame.loc[0, "catalog_status"] == "unreviewed"
-    assert frame.loc[0, "source_url"] == "https://www.sse.com.cn/disclosure/fund/report.pdf"
+    assert (
+        frame.loc[0, "source_url"]
+        == "https://www.sse.com.cn/disclosure/fund/report.pdf"
+    )
 
 
 def test_catalog_merge_is_idempotent_and_rejects_changed_title():
@@ -194,3 +212,4 @@ def test_szse_catalog_follows_all_pages():
 
     assert frame["announcement_id"].tolist() == ["SZSE_1", "SZSE_2"]
     assert session.post.call_count == 2
+    incremental_catalog_start_date,

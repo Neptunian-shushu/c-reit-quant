@@ -26,6 +26,8 @@ from creit_quant.market_factor_research import (
 from creit_quant.master_data import load_security_overrides, load_universe_history
 from creit_quant.strategy import load_distributions
 
+ROOT = Path(__file__).resolve().parents[2]
+
 
 def _fetch_full_market_snapshot(
     symbols: list[str],
@@ -189,11 +191,18 @@ def main() -> None:
     selections = pd.concat(selection_frames, ignore_index=True)
     robustness = pd.concat(robustness_frames, ignore_index=True)
     distributions = load_distributions()
+    membership_path = ROOT / "data" / "samples" / "reit_tradable_universe_monthly.csv"
+    reconstructed_membership = (
+        pd.read_csv(membership_path, dtype={"symbol": str})
+        if membership_path.exists()
+        else None
+    )
     gates = build_phase2_data_gates(
         universe_history,
         prices,
         verified_asset_type_count=len(load_security_overrides()),
         verified_distribution_security_count=distributions["symbol"].nunique(),
+        reconstructed_membership=reconstructed_membership,
     )
     print("\nPhase 2B纯多头市场因子（收益率单位：%）")
     print(summary.to_string(index=False, float_format=lambda value: f"{value:.4f}"))
