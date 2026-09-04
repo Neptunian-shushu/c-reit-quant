@@ -209,6 +209,11 @@ def main() -> None:
         type=Path,
         default=Path("data/snapshots/reit_announcement_catalog.csv"),
     )
+    parser.add_argument(
+        "--distribution-visual-overrides",
+        type=Path,
+        default=Path("data/reference/phase4_distribution_visual_overrides.csv"),
+    )
     parser.add_argument("--out-dir", type=Path, default=Path("data/samples"))
     args = parser.parse_args()
     catalog = pd.read_csv(args.catalog, dtype=str)
@@ -220,6 +225,21 @@ def main() -> None:
         ignore_index=True,
     ).sort_values(["symbol", "period_end", "publication_date", "metric"])
     distributions, excluded = extract_distributions(args.distribution_text_dir, catalog)
+    if args.distribution_visual_overrides.exists():
+        overrides = pd.read_csv(
+            args.distribution_visual_overrides, dtype={"symbol": str}
+        )
+        override_keys = set(zip(overrides["symbol"], overrides["publication_date"]))
+        excluded_keys = set(zip(excluded["symbol"], excluded["publication_date"]))
+        if not override_keys.issubset(excluded_keys):
+            raise ValueError("视觉复核覆盖项必须来自本次自动抽取排除表")
+        distributions = pd.concat([distributions, overrides], ignore_index=True)
+        excluded = excluded.loc[
+            ~excluded.apply(
+                lambda row: (row["symbol"], row["publication_date"]) in override_keys,
+                axis=1,
+            )
+        ]
     args.out_dir.mkdir(parents=True, exist_ok=True)
     fundamentals.to_csv(args.out_dir / "phase4_fund_fundamentals.csv", index=False)
     distributions.sort_values(["symbol", "publication_date"]).to_csv(

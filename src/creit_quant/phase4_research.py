@@ -156,6 +156,10 @@ def audit_phase4_database(
     ):
         raise ValueError("可供分配金额、份额与每份金额无法在披露精度内勾稽")
     nav = fundamentals.loc[fundamentals["metric"].eq("nav_per_unit")]
+    combined_status = pd.concat(
+        [fundamentals["verification_status"], distributions["verification_status"]],
+        ignore_index=True,
+    )
     return {
         "securities": fundamentals["symbol"].nunique(),
         "quarterly_reports": len(wide),
@@ -164,7 +168,12 @@ def audit_phase4_database(
         "nav_securities": nav["symbol"].nunique(),
         "distribution_events": len(distributions),
         "distribution_securities": distributions["symbol"].nunique(),
-        "machine_extracted_observations": len(fundamentals) + len(distributions),
+        "machine_extracted_observations": int(
+            combined_status.eq("machine_extracted_official_pdf").sum()
+        ),
+        "visual_verified_observations": int(
+            combined_status.eq("visual_verified_official_pdf").sum()
+        ),
         "human_verified_observations": 0,
     }
 

@@ -11,6 +11,7 @@ from creit_quant.operating_research import (
     load_operating_feature_definitions,
 )
 from creit_quant.phase4_research import (
+    DEFAULT_DISTRIBUTION_EXCLUSIONS_PATH,
     audit_phase4_database,
     build_phase4_gates,
     build_phase4_joint_signals,
@@ -48,21 +49,28 @@ def test_phase4_database_has_real_pit_nav_shares_and_distributions():
         "fundamental_observations": 343,
         "nav_observations": 28,
         "nav_securities": 8,
-        "distribution_events": 70,
+        "distribution_events": 76,
         "distribution_securities": 8,
         "machine_extracted_observations": 413,
+        "visual_verified_observations": 6,
         "human_verified_observations": 0,
     }
     assert (distributions["ex_date"] >= distributions["publication_date"]).all()
     assert (
         distributions["dpu_per_unit"] * 10 - distributions["disclosed_rmb_per_10_units"]
     ).abs().max() < 1e-12
+    visual = distributions.loc[
+        distributions["verification_status"].eq("visual_verified_official_pdf")
+    ]
+    assert len(visual) == 6
+    assert visual["symbol"].eq("508028").all()
+    assert pd.read_csv(DEFAULT_DISTRIBUTION_EXCLUSIONS_PATH).empty
 
 
 def test_joint_signal_uses_only_information_known_by_decision_date():
     fundamentals, distributions, _, _, signals = _inputs()
 
-    assert len(signals) == 53
+    assert len(signals) == 60
     assert signals["period_end"].nunique() == 8
     assert signals.groupby("period_end")["selected"].sum().eq(2).all()
     assert signals.groupby("period_end")["phase4_universe_count"].min().ge(6).all()
@@ -88,11 +96,11 @@ def test_phase4_backtest_reproduces_fixed_cost_baseline():
     result = summary.set_index("portfolio")
 
     assert result.loc["phase4_joint_top2_net", "total_return_pct"] == pytest.approx(
-        7.603849, abs=1e-6
+        11.188920, abs=1e-6
     )
     assert result.loc[
         "phase4_eligible_equal_weight_net", "total_return_pct"
-    ] == pytest.approx(1.541, abs=1e-3)
+    ] == pytest.approx(2.105948, abs=1e-6)
     assert result.loc[
         "reit_total_return_index_benchmark", "total_return_pct"
     ] == pytest.approx(0.681553, abs=1e-6)
@@ -111,12 +119,13 @@ def test_phase4_capacity_and_gates_block_deployment():
         fundamentals,
         distributions,
         universe_snapshots=1,
-        distribution_exclusions=6,
+        distribution_exclusions=0,
     )
 
     assert len(capacity) == 8
     assert capacity["capacity_at_5pct_adv_rmb"].min() == pytest.approx(416093.386455)
     assert gates.set_index("gate").loc["point_in_time_nav_securities", "passed"]
+    assert gates.set_index("gate").loc["distribution_extraction_exclusions", "passed"]
     assert not gates.set_index("gate").loc["historical_universe_snapshots", "passed"]
     assert not gates.set_index("gate").loc[
         "prospective_out_of_sample_quarters", "passed"

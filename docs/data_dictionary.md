@@ -224,7 +224,7 @@
 
 ### `phase4_distributions` 与排除表
 
-每次收益分配公告一行，`dpu_per_unit`由公告披露的每10份方案除以10标准化。`publication_date`控制信息可见时点，`ex_date`为场内除息日。508028的6份扫描PDF没有可用文字层，保存在`phase4_distribution_exclusions.csv`，没有推算或用季度可供分配金额替代。
+每次收益分配公告一行，`dpu_per_unit`由公告披露的每10份方案除以10标准化。`publication_date`控制信息可见时点，`ex_date`为场内除息日。508028的6份扫描PDF没有可用文字层，逐页核对后的值保存在`phase4_distribution_visual_overrides.csv`并标记`visual_verified_official_pdf`；自动抽取排除表当前为空。没有推算或用季度可供分配金额替代。
 
 ### `phase4_unadjusted_prices`
 
@@ -265,8 +265,8 @@
 - `phase2_market_factor_selections.csv`：各次入选证券和5% ADV容量近似；
 - `phase2_data_gates.csv`：Phase 2未满足的数据条件。
 - `phase4_fund_fundamentals.csv`：105份季度报告三项指标与28条年末NAV；
-- `phase4_distributions.csv`及排除表：70次实际DPU和6份不可读扫描公告；
-- `phase4_joint_signals.csv`：8期53条四因子完整横截面；
+- `phase4_distributions.csv`及视觉覆盖表：76次实际DPU，其中6次来自扫描公告逐页复核；
+- `phase4_joint_signals.csv`：8期60条四因子完整横截面；
 - `phase4_strategy_summary.csv`、稳健性、容量与闸门表：联合纯多头研究结果。
 
 Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2派生表随冻结行情提交，能源结果可由`python -m creit_quant.phase2`离线重建，全市场结果可由`python -m creit_quant.phase2_market`离线重建。Phase 4联合结果可由`python -m creit_quant.phase4`离线重建；基金指标原始PDF仍只在仓库外受控保存。

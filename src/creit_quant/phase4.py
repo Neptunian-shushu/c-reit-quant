@@ -93,7 +93,11 @@ def main() -> None:
     print(robustness.to_string(index=False, float_format=lambda value: f"{value:.3f}"))
     print("\n数据与部署闸门")
     print(gates.to_string(index=False))
-    print("\n结论：Phase 4数据库和研究代码闭环完成，但不部署。" "历史universe、12期横截面、扫描PDF缺口及前瞻样本外季度仍未过闸门。")
+    print(
+        "\n结论：Phase 4数据库和研究代码闭环完成，但不部署。"
+        "扫描PDF缺口已完成视觉复核；历史universe、12期横截面及"
+        "前瞻样本外季度仍未过闸门。"
+    )
 
     if args.out_dir:
         args.out_dir.mkdir(parents=True, exist_ok=True)
