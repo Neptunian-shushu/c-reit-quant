@@ -10,10 +10,16 @@ import pandas as pd
 
 from creit_quant.announcements import load_announcement_catalog
 from creit_quant.documents import enrich_document_metadata
+from creit_quant.coverage import (
+    build_document_extraction_queue,
+    build_security_data_coverage,
+)
 from creit_quant.master_data import (
     build_month_end_tradable_universe,
+    extract_official_asset_type_evidence,
     extract_official_listing_records,
     load_listing_date_overrides,
+    load_security_overrides,
     load_universe_history,
 )
 from creit_quant.phase4_research import (
@@ -53,9 +59,7 @@ def _enrich_sources_in_parallel(
     ].copy()
 
     def fetch(row: pd.Series) -> pd.Series:
-        return enrich_document_metadata(
-            pd.DataFrame([row]), timeout=timeout
-        ).iloc[0]
+        return enrich_document_metadata(pd.DataFrame([row]), timeout=timeout).iloc[0]
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         fetched = list(executor.map(fetch, [row for _, row in pending.iterrows()]))
@@ -88,6 +92,9 @@ def main() -> None:
     latest_date = observed["snapshot_date"].max()
     latest = observed.loc[observed["snapshot_date"].eq(latest_date)].copy()
     listings = extract_official_listing_records(catalog, load_listing_date_overrides())
+    asset_types = extract_official_asset_type_evidence(
+        catalog, load_security_overrides()
+    )
     evidence_as_of = max(latest_date, catalog["publication_date"].max())
     membership = build_month_end_tradable_universe(
         listings,
@@ -105,7 +112,9 @@ def main() -> None:
         document_registry_paths=DOCUMENT_REGISTRIES,
         existing=existing,
     )
-    existing_sources = pd.read_csv(source_path, dtype=str) if source_path.exists() else None
+    existing_sources = (
+        pd.read_csv(source_path, dtype=str) if source_path.exists() else None
+    )
     source_registry = build_phase4_source_registry(queue, existing_sources)
     source_registry = merge_registered_source_metadata(
         source_registry, DOCUMENT_REGISTRIES
@@ -120,6 +129,25 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     listings.to_csv(args.out_dir / "reit_official_listing_records.csv", index=False)
     membership.to_csv(args.out_dir / "reit_tradable_universe_monthly.csv", index=False)
+    asset_types.to_csv(args.out_dir / "reit_asset_type_evidence.csv", index=False)
+    coverage = build_security_data_coverage(
+        catalog, asset_types, listings, as_of_date=evidence_as_of
+    )
+    coverage.to_csv(args.out_dir / "reit_security_data_coverage.csv", index=False)
+    distribution_audit_path = (
+        args.out_dir / "full_market_distribution_document_audit.csv"
+    )
+    distribution_audit = (
+        pd.read_csv(distribution_audit_path, dtype={"symbol": str})
+        if distribution_audit_path.exists()
+        else None
+    )
+    extraction_queue = build_document_extraction_queue(
+        catalog, asset_types, source_registry, distribution_audit
+    )
+    extraction_queue.to_csv(
+        args.out_dir / "reit_document_extraction_queue.csv", index=False
+    )
     source_registry.to_csv(source_path, index=False)
     queue = build_phase4_verification_queue(
         fundamentals,
@@ -134,6 +162,11 @@ def main() -> None:
     unlisted = sorted(set(latest["symbol"]).difference(listed_as_of))
     print(f"正式上市记录: {len(listings)}只；未上市观察对象: {len(unlisted)}只 {unlisted}")
     print(
+        f"资产类型证据: {asset_types['asset_type'].ne('unknown').sum()} / "
+        f"{len(asset_types)}只；人工核验 "
+        f"{asset_types['classification_status'].eq('human_verified').sum()}只"
+    )
+    print(
         f"月末可交易名单: {membership['snapshot_date'].nunique()}个月 / {len(membership)}行，"
         f"截至{membership['snapshot_date'].max().date()}"
     )
@@ -141,6 +174,10 @@ def main() -> None:
     print(
         f"Phase 4来源哈希: {source_registry['retrieval_status'].eq('success').sum()} / "
         f"{len(source_registry)} 个URL"
+    )
+    print(
+        f"全市场解析队列: {len(extraction_queue)}份；"
+        f"状态 {extraction_queue['extraction_status'].value_counts().to_dict()}"
     )
 
 

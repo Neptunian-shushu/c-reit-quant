@@ -167,6 +167,86 @@ def build_phase4_verification_queue(
     return result.reset_index(drop=True)
 
 
+def build_distribution_verification_queue(
+    distributions: pd.DataFrame,
+    *,
+    dataset: str = "full_market_distributions",
+    existing: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """为带来源哈希的实际DPU面板生成可增量保留结果的独立复核队列。"""
+
+    required = {
+        "symbol",
+        "publication_date",
+        "dpu_per_unit",
+        "source_url",
+        "source_sha256",
+        "verification_status",
+    }
+    missing = sorted(required.difference(distributions.columns))
+    if missing:
+        raise ValueError(f"全市场分派复核队列缺少字段: {missing}")
+    queue = distributions.copy()
+    queue["dataset"] = dataset
+    queue["period_end"] = ""
+    queue["metric"] = "distribution_per_unit"
+    queue["value"] = queue["dpu_per_unit"].map(
+        lambda value: format(float(value), ".15g")
+    )
+    queue["unit"] = "RMB_per_unit"
+    queue["publication_date"] = pd.to_datetime(
+        queue["publication_date"], errors="raise", format="mixed"
+    ).dt.strftime("%Y-%m-%d")
+    identity_columns = [
+        "dataset",
+        "symbol",
+        "period_end",
+        "publication_date",
+        "metric",
+        "value",
+        "unit",
+        "source_url",
+    ]
+    queue.insert(
+        0,
+        "observation_id",
+        queue[identity_columns].apply(
+            lambda row: _observation_id(row.tolist()), axis=1
+        ),
+    )
+    queue = queue.rename(columns={"verification_status": "current_verification_status"})
+    queue["review_status"] = "pending_independent_review"
+    queue["reviewed_by"] = ""
+    queue["reviewed_at"] = ""
+    queue["review_notes"] = ""
+    if existing is not None and not existing.empty:
+        validate_phase4_verification_queue(existing)
+        reviews = existing[
+            [
+                "observation_id",
+                "review_status",
+                "reviewed_by",
+                "reviewed_at",
+                "review_notes",
+            ]
+        ]
+        queue = queue.drop(
+            columns=["review_status", "reviewed_by", "reviewed_at", "review_notes"]
+        ).merge(reviews, on="observation_id", how="left", validate="one_to_one")
+        queue["review_status"] = queue["review_status"].fillna(
+            "pending_independent_review"
+        )
+        for column in ["reviewed_by", "reviewed_at", "review_notes"]:
+            queue[column] = queue[column].fillna("")
+    result = (
+        queue[REVIEW_COLUMNS]
+        .sort_values(["symbol", "publication_date", "observation_id"])
+        .reset_index(drop=True)
+    )
+    validate_phase4_verification_queue(result)
+    return result
+
+
 def validate_phase4_verification_queue(frame: pd.DataFrame) -> None:
     """拒绝无复核人或无复核时间的完成状态。"""
 
@@ -215,9 +295,7 @@ def build_phase4_source_registry(
         observation_count=("observation_id", "size"),
         content_sha256=(
             "source_sha256",
-            lambda values: next(
-                (value for value in values.astype(str) if value), ""
-            ),
+            lambda values: next((value for value in values.astype(str) if value), ""),
         ),
     )
     grouped.insert(
@@ -230,8 +308,8 @@ def build_phase4_source_registry(
     grouped["retrieved_at"] = ""
     grouped["content_type"] = ""
     grouped["content_length_bytes"] = pd.NA
-    grouped["retrieval_status"] = grouped["content_sha256"].ne("").map(
-        {True: "success", False: "pending"}
+    grouped["retrieval_status"] = (
+        grouped["content_sha256"].ne("").map({True: "success", False: "pending"})
     )
     grouped["retrieval_error"] = ""
     if existing is not None and not existing.empty:
@@ -260,8 +338,10 @@ def build_phase4_source_registry(
         )
         generated_hash = grouped["content_sha256"].fillna("").astype(str)
         existing_hash = grouped["content_sha256_existing"].fillna("").astype(str)
-        conflict = generated_hash.ne("") & existing_hash.ne("") & generated_hash.ne(
-            existing_hash
+        conflict = (
+            generated_hash.ne("")
+            & existing_hash.ne("")
+            & generated_hash.ne(existing_hash)
         )
         if conflict.any():
             raise ValueError("Phase 4来源清单与新观测的SHA-256冲突")
@@ -285,8 +365,10 @@ def build_phase4_source_registry(
             generated_hash.ne("") | existing_hash.ne(""), "retrieval_status"
         ] = "success"
         grouped = grouped.drop(columns="retrieval_status_existing")
-    return grouped[SOURCE_REGISTRY_COLUMNS].sort_values("source_url").reset_index(
-        drop=True
+    return (
+        grouped[SOURCE_REGISTRY_COLUMNS]
+        .sort_values("source_url")
+        .reset_index(drop=True)
     )
 
 
@@ -315,9 +397,7 @@ def merge_registered_source_metadata(
     )
     for column in ["content_sha256", "content_length_bytes"]:
         conflicts = (
-            registered.dropna(subset=[column])
-            .groupby("source_url")[column]
-            .nunique()
+            registered.dropna(subset=[column]).groupby("source_url")[column].nunique()
         )
         if conflicts.gt(1).any():
             raise ValueError(f"同一来源URL存在冲突字段: {column}")
@@ -326,9 +406,11 @@ def merge_registered_source_metadata(
         available = registered.loc[
             registered[column].fillna("").astype(str).ne("")
         ].drop_duplicates("source_url", keep="last")
-        incoming = frame["source_url"].map(
-            available.set_index("source_url")[column]
-        ).fillna("")
+        incoming = (
+            frame["source_url"]
+            .map(available.set_index("source_url")[column])
+            .fillna("")
+        )
         incoming = incoming.astype(str)
         if column == "retrieval_status":
             upgrade = current.ne("success") & incoming.eq("success")
@@ -338,6 +420,6 @@ def merge_registered_source_metadata(
         if conflict.any():
             raise ValueError(f"Phase 4来源清单与既有登记冲突: {column}")
         frame.loc[current.eq("") & incoming.ne(""), column] = incoming
-    return frame[SOURCE_REGISTRY_COLUMNS].sort_values("source_url").reset_index(
-        drop=True
+    return (
+        frame[SOURCE_REGISTRY_COLUMNS].sort_values("source_url").reset_index(drop=True)
     )

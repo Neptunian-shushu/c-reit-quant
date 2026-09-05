@@ -5,16 +5,28 @@
 1. 追加当日实时universe快照；同日冲突会拒绝覆盖。
 2. 增量更新沪深交易所公告目录。默认从每只证券最后公告日前7日开始，吸收迟到公告和修订。
 3. 重建上市证据、已完成月末成员、Phase 4来源清单和独立复核队列。
-4. 仅对缺少哈希的官方URL联网计算SHA-256；响应不写入仓库。
-5. 解析新报告后运行全量测试和各阶段离线重建。
+4. 重建全市场资产类型证据、证券覆盖表和文档解析队列。
+5. 增量抓取分派公告；响应只在内存中转换，文档审计可断点恢复。
+6. 仅对缺少哈希的官方URL联网计算SHA-256；响应不写入仓库。
+7. 解析新报告后运行全量测试和各阶段离线重建。
 
 ```bash
 python -m creit_quant.phase1_universe
 python -m creit_quant.phase1_announcements
 python -m creit_quant.phase4_database --fetch-missing-hashes
+python -m creit_quant.full_market_distributions
+python -m creit_quant.phase4_database
 python -m pytest -q
 python -m creit_quant.phase4 --out-dir data/samples
 ```
+
+分派程序默认复用`full_market_distribution_document_audit.csv`中的成功结果，只重试失败公告。上游限流时可先停止联网，并用以下命令验证事件表可离线重建：
+
+```bash
+python -m creit_quant.full_market_distributions --rebuild-from-audit
+```
+
+`needs_ocr_or_visual_review`不得自动补值。`fetch_or_parse_failed`先区分HTTP限流和规则失败；深交所403应在冷却后增量重试，不得改用未经核验的二手数字。
 
 ## 独立复核
 

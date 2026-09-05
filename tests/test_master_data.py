@@ -8,6 +8,7 @@ from creit_quant.master_data import (
     build_security_master,
     build_universe_snapshot,
     classify_asset_type_candidates,
+    extract_official_asset_type_evidence,
     extract_official_listing_records,
     merge_universe_history,
 )
@@ -95,7 +96,9 @@ def test_repository_listing_dates_match_first_real_market_dates():
     assert len(listings) == 89
     assert len(priced_listings) == 88
     assert priced_listings.set_index("symbol")["listing_date"].eq(first_prices).all()
-    assert listings.loc[~listings["symbol"].isin(first_prices.index), "symbol"].tolist() == ["181001"]
+    assert listings.loc[
+        ~listings["symbol"].isin(first_prices.index), "symbol"
+    ].tolist() == ["181001"]
     assert membership["snapshot_date"].nunique() == 63
     assert len(membership) == 2559
     assert membership["source_url"].str.startswith("https://").all()
@@ -192,3 +195,53 @@ def test_only_official_override_promotes_candidate_to_verified():
     assert result["candidate_asset_type"] == "retail"
     assert result["classification_status"] == "human_verified"
     assert result["record_status"] == "human_verified"
+
+
+def test_official_title_asset_type_evidence_is_not_called_human_verified():
+    catalog = pd.DataFrame(
+        {
+            "symbol": ["508001", "508010"],
+            "publication_date": ["2026-07-21", "2026-07-21"],
+            "title": [
+                "某高速公路封闭式基础设施证券投资基金2026年第2季度报告",
+                "某产业园封闭式基础设施证券投资基金2026年第2季度报告",
+            ],
+            "source_url": ["https://sse/road.pdf", "https://sse/park.pdf"],
+            "document_type_candidate": ["quarterly_report", "quarterly_report"],
+        }
+    )
+
+    result = extract_official_asset_type_evidence(catalog).set_index("symbol")
+
+    assert result.loc["508001", "asset_type"] == "toll_road"
+    assert result.loc["508010", "asset_type"] == "industrial_park"
+    assert result["classification_status"].eq("official_title_evidence").all()
+    assert result.loc["508001", "evidence_phrase"] == "高速公路"
+
+
+def test_official_title_conflict_requires_review_and_manual_override_wins():
+    catalog = pd.DataFrame(
+        {
+            "symbol": ["508096", "508096"],
+            "publication_date": ["2025-01-01", "2026-01-01"],
+            "title": ["某新能源基金公告", "某产业园基金公告"],
+            "source_url": ["https://sse/energy.pdf", "https://sse/park.pdf"],
+        }
+    )
+    conflict = extract_official_asset_type_evidence(catalog).iloc[0]
+    assert conflict["asset_type"] == "unknown"
+    assert conflict["classification_status"] == "conflicting_official_title_evidence"
+
+    override = pd.DataFrame(
+        {
+            "symbol": ["508096"],
+            "official_name": ["中航京能国际能源REIT"],
+            "asset_type": ["mixed_energy"],
+            "verification_status": ["human_verified"],
+            "source_url": ["https://sse/report.pdf"],
+            "notes": ["项目组合人工核验"],
+        }
+    )
+    verified = extract_official_asset_type_evidence(catalog, override).iloc[0]
+    assert verified["asset_type"] == "mixed_energy"
+    assert verified["classification_status"] == "human_verified"

@@ -3,6 +3,7 @@ import pytest
 from pathlib import Path
 
 from creit_quant.verification import (
+    build_distribution_verification_queue,
     build_phase4_source_registry,
     build_phase4_verification_queue,
     merge_registered_source_metadata,
@@ -95,6 +96,28 @@ def test_existing_registry_does_not_drop_new_url_hash():
 
     assert rebuilt.loc["https://sse/distribution.pdf", "content_sha256"] == "b" * 64
     assert rebuilt.loc["https://sse/distribution.pdf", "retrieval_status"] == "success"
+
+
+def test_distribution_review_queue_preserves_review_by_stable_observation_id():
+    distributions = pd.DataFrame(
+        {
+            "symbol": ["508026"],
+            "publication_date": ["2026-08-01"],
+            "dpu_per_unit": [0.1],
+            "source_url": ["https://sse/distribution.pdf"],
+            "source_sha256": ["a" * 64],
+            "verification_status": ["machine_extracted_official_pdf"],
+        }
+    )
+    first = build_distribution_verification_queue(distributions)
+    first.loc[0, "review_status"] = "confirmed"
+    first.loc[0, "reviewed_by"] = "reviewer"
+    first.loc[0, "reviewed_at"] = "2026-09-05T12:00:00+08:00"
+
+    rebuilt = build_distribution_verification_queue(distributions, existing=first)
+
+    assert rebuilt.loc[0, "review_status"] == "confirmed"
+    assert rebuilt.loc[0, "reviewed_by"] == "reviewer"
 
 
 def test_registered_source_metadata_fills_empty_fields(tmp_path):

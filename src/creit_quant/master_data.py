@@ -56,6 +56,31 @@ ASSET_TYPE_RULES = [
     ("water", ("水务", "水利")),
 ]
 
+OFFICIAL_TITLE_ASSET_TYPE_RULES = [
+    ("data_center", ("数据中心",)),
+    ("rental_housing", ("租赁住房", "保障性住房", "保障房", "保租房")),
+    ("toll_road", ("高速公路", "高速封闭式基础设施", "收费公路", "跨海大桥")),
+    ("logistics", ("仓储物流", "物流仓储", "物流基础设施", "医药仓储")),
+    ("industrial_park", ("产业园", "软件园", "科创孵化器")),
+    ("retail", ("消费", "购物中心", "奥特莱斯", "农贸市场")),
+    ("water", ("水务", "原水水利")),
+    ("heating", ("供热",)),
+    ("waste_to_energy", ("生物质",)),
+    ("renewable", ("清洁能源", "新能源")),
+    ("commercial_property", ("商业不动产",)),
+]
+
+ASSET_TYPE_EVIDENCE_COLUMNS = [
+    "symbol",
+    "asset_type",
+    "classification_status",
+    "classification_method",
+    "evidence_phrase",
+    "publication_date",
+    "source_url",
+    "raw_title",
+]
+
 
 def _exchange_from_symbol(symbol: str) -> str:
     if symbol.startswith("508"):
@@ -239,6 +264,130 @@ def apply_security_overrides(
     result.loc[verified, "classification_status"] = "human_verified"
     result.loc[verified, "record_status"] = "human_verified"
     return result.drop(columns=["official_name", "asset_type", "verification_status"])
+
+
+def extract_official_asset_type_evidence(
+    catalog: pd.DataFrame,
+    overrides: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """从正式公告标题构建资产类型证据层。
+
+    只有标题明确出现规范资产类别词时才生成自动证据。自动结果标记为
+    ``official_title_evidence``，不会冒充人工复核；同一代码若命中多个类别则
+    保留为冲突状态。人工覆盖必须来自正式来源，并优先于标题规则。
+    """
+
+    required = {"symbol", "publication_date", "title", "source_url"}
+    missing = sorted(required.difference(catalog.columns))
+    if missing:
+        raise ValueError(f"公告目录缺少资产类型证据字段: {missing}")
+    frame = catalog.copy()
+    frame["symbol"] = frame["symbol"].astype(str).str.zfill(6)
+    frame["publication_date"] = pd.to_datetime(
+        frame["publication_date"], errors="raise"
+    )
+    frame["title"] = frame["title"].fillna("").astype(str)
+    document_type = frame.get(
+        "document_type_candidate", pd.Series("other", index=frame.index)
+    ).fillna("other")
+    frame["evidence_priority"] = (
+        ~document_type.isin({"quarterly_report", "semiannual_report", "annual_report"})
+    ).astype(int)
+
+    matches: list[dict[str, object]] = []
+    for row in frame.itertuples(index=False):
+        title = str(row.title)
+        for asset_type, phrases in OFFICIAL_TITLE_ASSET_TYPE_RULES:
+            phrase = next((value for value in phrases if value in title), None)
+            if phrase is not None:
+                matches.append(
+                    {
+                        "symbol": row.symbol,
+                        "asset_type": asset_type,
+                        "evidence_phrase": phrase,
+                        "publication_date": row.publication_date,
+                        "source_url": row.source_url,
+                        "raw_title": title,
+                        "evidence_priority": row.evidence_priority,
+                    }
+                )
+                break
+    evidence = pd.DataFrame(matches)
+    rows: list[dict[str, object]] = []
+    for symbol in sorted(frame["symbol"].unique()):
+        found = (
+            evidence.loc[evidence["symbol"].eq(symbol)]
+            if not evidence.empty
+            else evidence
+        )
+        types = sorted(found["asset_type"].unique()) if not found.empty else []
+        if len(types) == 1:
+            best = found.sort_values(
+                ["evidence_priority", "publication_date"], ascending=[True, False]
+            ).iloc[0]
+            rows.append(
+                {
+                    **best.drop(labels="evidence_priority").to_dict(),
+                    "classification_status": "official_title_evidence",
+                    "classification_method": "official_announcement_title_keyword",
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "asset_type": "unknown",
+                    "classification_status": (
+                        "conflicting_official_title_evidence"
+                        if len(types) > 1
+                        else "needs_human_review"
+                    ),
+                    "classification_method": "official_announcement_title_keyword",
+                    "evidence_phrase": "|".join(types),
+                    "publication_date": pd.NaT,
+                    "source_url": "",
+                    "raw_title": "",
+                }
+            )
+    result = pd.DataFrame(rows)
+    if overrides is not None and not overrides.empty:
+        manual = overrides.copy()
+        required_override = {
+            "symbol",
+            "official_name",
+            "asset_type",
+            "verification_status",
+            "source_url",
+        }
+        absent = sorted(required_override.difference(manual.columns))
+        if absent:
+            raise ValueError(f"证券核验覆盖层缺少字段: {absent}")
+        if not manual["verification_status"].eq("human_verified").all():
+            raise ValueError("证券资产类型人工覆盖只允许 human_verified")
+        manual["symbol"] = manual["symbol"].astype(str).str.zfill(6)
+        unknown = sorted(set(manual["symbol"]).difference(result["symbol"]))
+        if unknown:
+            raise ValueError(f"资产类型人工覆盖包含公告目录外代码: {unknown}")
+        manual_rows = pd.DataFrame(
+            {
+                "symbol": manual["symbol"],
+                "asset_type": manual["asset_type"],
+                "classification_status": "human_verified",
+                "classification_method": "official_source_manual_review",
+                "evidence_phrase": manual.get("notes", ""),
+                "publication_date": pd.NaT,
+                "source_url": manual["source_url"],
+                "raw_title": manual["official_name"],
+            }
+        )
+        result = result.loc[~result["symbol"].isin(manual_rows["symbol"])]
+        result = pd.concat([result, manual_rows], ignore_index=True)
+    result["publication_date"] = pd.to_datetime(
+        result["publication_date"], errors="coerce"
+    )
+    return (
+        result[ASSET_TYPE_EVIDENCE_COLUMNS].sort_values("symbol").reset_index(drop=True)
+    )
 
 
 def extract_official_listing_records(
