@@ -8,7 +8,8 @@
 4. 重建全市场资产类型证据、证券覆盖表和文档解析队列。
 5. 增量抓取分派公告及年报基金事实；响应只在内存中转换，文档审计可断点恢复。
 6. 仅对缺少哈希的官方URL联网计算SHA-256；响应不写入仓库。
-7. 解析新报告后运行全量测试和各阶段离线重建。
+7. 增量冻结全市场不复权行情，再重建基金估值就绪度和资产边界事件候选。
+8. 解析新报告后运行全量测试和各阶段离线重建。
 
 ```bash
 python -m creit_quant.phase1_universe
@@ -17,6 +18,8 @@ python -m creit_quant.phase4_database --fetch-missing-hashes
 python -m creit_quant.full_market_distributions
 python -m creit_quant.full_market_fundamentals
 python -m creit_quant.full_market_periodic_fundamentals
+python -m creit_quant.full_market_unadjusted_prices --source sina
+python -m creit_quant.database_readiness
 python -m creit_quant.phase4_database
 python -m pytest -q
 python -m creit_quant.phase4 --out-dir data/samples
@@ -33,6 +36,10 @@ python -m creit_quant.full_market_periodic_fundamentals --rebuild-from-audit
 年报程序依赖系统`pdftotext`（Poppler）。它只提取报告期末基金份额和账面每份NAV，显式排除公允价值参考净值。`--retry-parse-failures`只重试失败的上交所年报；深交所403应等待冷却或上游恢复后再重试。
 
 季报／中报程序使用`distributable_amount_period`通用指标名，并保留`document_type`；因此中报的半年累计值不会被误标为单季度值。同日存在更正稿时优先更正文档；原始和更正文档仍都保留在审计表。
+
+不复权行情默认可用东方财富直连；若该端点被代理或上游主动断开，可显式使用`--source sina`。覆盖表区分真实无历史和网络失败，增量合并不会用一次网络失败删除已有有效快照。完成后运行`python -m creit_quant.database_readiness`；就绪度只判断字段能否连接，不能代替独立复核。
+
+事件候选表中的公布日不能填写到`effective_date`。份额跳变只能证明变更发生在两个报告期末之间；必须从份额上市、基金合同生效或资产交割公告取得精确日期后再升级。
 
 `needs_ocr_or_visual_review`不得自动补值。`fetch_or_parse_failed`先区分HTTP限流和规则失败；深交所403应在冷却后增量重试，不得改用未经核验的二手数字。
 

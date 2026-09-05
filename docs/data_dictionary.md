@@ -250,6 +250,14 @@
 
 8只主样本每个交易日一行，`adjustment=none`。该表只用于计算历史DPU yield、NAV/price和含分派20日动量；策略收益仍使用冻结的后复权快照。禁止用后复权价格的历史绝对水平计算收益率型估值。
 
+### 全市场不复权行情与基金就绪度
+
+`full_market_unadjusted_prices.csv`粒度为证券和交易日，`adjustment`固定为`none`，用于P/NAV、DPU收益率等依赖历史绝对价格的估值计算。`full_market_unadjusted_price_coverage.csv`每只2026-08-28 universe证券一行，保存`available`、`no_history`或`network_failed`、行数、日期范围、重试次数、抓取时点和上游错误。一次`network_failed`不得删除已有冻结历史。
+
+`reit_fundamental_readiness.csv`每只公告观察证券一行，汇总基金事实、份额、NAV、实际DPU和不复权行情覆盖。`p_nav_status`与`dpu_yield_status`的`data_available_pending_independent_review`只表示字段可连接，不表示来源已完成独立复核或因子有效。
+
+`reit_fund_event_candidates.csv`每份命中扩募、更名或终止关键词的官方公告一行。`event_date_candidate`只采用公告公布日，`event_date_semantics=announcement_publication_only`；未取得正式生效证据时`effective_date`为空。`reit_share_change_events.csv`比较相邻报告期末`fund_shares`，记录首次报表确认的份额跳变及对应来源哈希，不倒推精确生效日。
+
 ### `phase4_joint_signals` 与策略结果
 
 每个季度、每只四项数据完整的证券一行。四项百分位排名为经营surprise、TTM实际DPU yield、NAV/price和20日含分派动量，`model_score`是固定等权平均。每期至少6只，`selected=true`为最高2只。结果表同时保存双向各万一、最低5元、现金1.5%、932047基准、单因子对照、5bp成本敏感性和5% ADV容量近似。
@@ -305,5 +313,9 @@
 - `full_market_periodic_reconciliation.csv`：939个报告时点的金额／份额勾稽结果。
 - `full_market_periodic_fundamentals_verification_queue.csv`：2,972条定期报告事实的独立复核任务。
 - `full_market_fundamentals.csv`：3,216条季报、中报和年报统一基金事实。
+- `full_market_unadjusted_prices.csv`及覆盖表：50,863行不复权日线、88只有历史，6只无历史；
+- `reit_fundamental_readiness.csv`：95只证券的基金事实、P/NAV和DPU收益率连接就绪度；
+- `reit_fund_event_candidates.csv`：225份扩募／更名官方标题候选；
+- `reit_share_change_events.csv`：10次只能定位在相邻报告期之间的份额跳变。
 
 Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2派生表随冻结行情提交，能源结果可由`python -m creit_quant.phase2`离线重建，全市场结果可由`python -m creit_quant.phase2_market`离线重建。Phase 4联合结果可由`python -m creit_quant.phase4`离线重建；基金指标原始PDF仍只在仓库外受控保存。
