@@ -228,13 +228,17 @@
 
 每次收益分配公告一行，`dpu_per_unit`由公告披露的每10份方案除以10标准化。`publication_date`控制信息可见时点，`ex_date`为场内除息日。508028的6份扫描PDF没有可用文字层，逐页核对后的值保存在`phase4_distribution_visual_overrides.csv`并标记`visual_verified_official_pdf`；自动抽取排除表当前为空。没有推算或用季度可供分配金额替代。
 
-### 全市场分类、覆盖与DPU
+### 全市场分类、覆盖、DPU与年报基金事实
 
 `reit_asset_type_evidence.csv`每只公告观察对象一行。`official_title_evidence`只表示交易所公告标题明确含有资产类别词；`human_verified`才表示已对正式来源执行人工核验。`commercial_property`保留商业不动产这一较宽类别，不在缺少底层资产证据时强行归入零售。
 
 `reit_security_data_coverage.csv`每只证券一行，汇总上市状态、各类报告数量、最早／最新公告日和资产类型来源。`reit_document_extraction_queue.csv`每份年报、中报、季报或分派公告一行，区分未处理、已有观测来源、机器抽取成功、需OCR／视觉复核及抓取／解析失败。
 
 `full_market_distribution_document_audit.csv`粒度为每份分派公告，保存响应SHA-256、长度、UTC抓取时间和失败原因，不保存PDF。`full_market_distributions.csv`粒度为每只证券每个公告日的实际分派事件；`dpu_per_unit`统一为元／份，`disclosed_rmb_per_10_units`保留原披露口径，`ex_date`为场内除息日，`source_sha256`直接连接来源内容。机器解析无法确认字段时不生成事件。`full_market_distribution_verification_queue.csv`为378条事件生成稳定观测ID，并独立保存复核人、复核时间与结论；重新生成时保留ID未变化的复核结果。
+
+`full_market_annual_document_audit.csv`粒度为每份年报，记录拉取状态、响应哈希、字节数、失败原因和已抽取的两项文档级事实。`full_market_annual_fundamentals.csv`粒度为`symbol + period_end + metric`，当前只允许`fund_shares`（`shares`）和`nav_per_unit`（`RMB_per_unit`）。`nav_per_unit`是年报直接披露的期末账面基金份净值，不是公允价值参考净值，也不由评估值倒算。`publication_date`是信息可见日，`source_sha256`指向官方PDF响应。
+
+`full_market_annual_fundamentals_verification_queue.csv`为244条年报事实生成稳定ID。`machine_extracted_official_pdf`只表示机器从官方文件取值；在复核人填写`confirmed`、姓名和带时区时间前，不能宣称完成独立人工核验。
 
 ### `phase4_unadjusted_prices`
 
@@ -287,5 +291,8 @@
 - `full_market_distribution_document_audit.csv`：495份分派公告的抓取、哈希和失败审计；
 - `full_market_distributions.csv`：378次实际DPU事件、67只证券，全部带来源哈希。
 - `full_market_distribution_verification_queue.csv`：378条全市场DPU的独立复核任务。
+- `full_market_annual_document_audit.csv`：187份年报的抓取、哈希和失败审计。
+- `full_market_annual_fundamentals.csv`：122份年报产生的244条期末份额与账面NAV观测，覆盖52只证券。
+- `full_market_annual_fundamentals_verification_queue.csv`：244条年报基金事实的独立复核任务。
 
 Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2派生表随冻结行情提交，能源结果可由`python -m creit_quant.phase2`离线重建，全市场结果可由`python -m creit_quant.phase2_market`离线重建。Phase 4联合结果可由`python -m creit_quant.phase4`离线重建；基金指标原始PDF仍只在仓库外受控保存。

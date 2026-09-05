@@ -134,16 +134,18 @@ def main() -> None:
         catalog, asset_types, listings, as_of_date=evidence_as_of
     )
     coverage.to_csv(args.out_dir / "reit_security_data_coverage.csv", index=False)
-    distribution_audit_path = (
-        args.out_dir / "full_market_distribution_document_audit.csv"
-    )
-    distribution_audit = (
-        pd.read_csv(distribution_audit_path, dtype={"symbol": str})
-        if distribution_audit_path.exists()
-        else None
-    )
+    audit_paths = [
+        args.out_dir / "full_market_distribution_document_audit.csv",
+        args.out_dir / "full_market_annual_document_audit.csv",
+    ]
+    audits = [
+        pd.read_csv(path, dtype={"symbol": str})
+        for path in audit_paths
+        if path.exists()
+    ]
+    document_audit = pd.concat(audits, ignore_index=True) if audits else None
     extraction_queue = build_document_extraction_queue(
-        catalog, asset_types, source_registry, distribution_audit
+        catalog, asset_types, source_registry, document_audit
     )
     extraction_queue.to_csv(
         args.out_dir / "reit_document_extraction_queue.csv", index=False

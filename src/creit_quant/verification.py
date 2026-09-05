@@ -247,6 +247,85 @@ def build_distribution_verification_queue(
     return result
 
 
+def build_fundamental_verification_queue(
+    fundamentals: pd.DataFrame,
+    *,
+    dataset: str = "full_market_annual_fundamentals",
+    existing: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """为带来源哈希的long-format基金事实生成独立复核队列。"""
+
+    required = {
+        "symbol",
+        "period_end",
+        "publication_date",
+        "metric",
+        "value",
+        "unit",
+        "source_url",
+        "source_sha256",
+        "verification_status",
+    }
+    missing = sorted(required.difference(fundamentals.columns))
+    if missing:
+        raise ValueError(f"全市场基金事实复核队列缺少字段: {missing}")
+    queue = fundamentals.copy()
+    queue["dataset"] = dataset
+    queue["value"] = queue["value"].map(lambda value: format(float(value), ".15g"))
+    for column in ["period_end", "publication_date"]:
+        queue[column] = pd.to_datetime(
+            queue[column], errors="raise", format="mixed"
+        ).dt.strftime("%Y-%m-%d")
+    identity_columns = [
+        "dataset",
+        "symbol",
+        "period_end",
+        "publication_date",
+        "metric",
+        "value",
+        "unit",
+        "source_url",
+    ]
+    queue.insert(
+        0,
+        "observation_id",
+        queue[identity_columns].apply(
+            lambda row: _observation_id(row.tolist()), axis=1
+        ),
+    )
+    queue = queue.rename(columns={"verification_status": "current_verification_status"})
+    queue["review_status"] = "pending_independent_review"
+    queue["reviewed_by"] = ""
+    queue["reviewed_at"] = ""
+    queue["review_notes"] = ""
+    if existing is not None and not existing.empty:
+        validate_phase4_verification_queue(existing)
+        reviews = existing[
+            [
+                "observation_id",
+                "review_status",
+                "reviewed_by",
+                "reviewed_at",
+                "review_notes",
+            ]
+        ]
+        queue = queue.drop(
+            columns=["review_status", "reviewed_by", "reviewed_at", "review_notes"]
+        ).merge(reviews, on="observation_id", how="left", validate="one_to_one")
+        queue["review_status"] = queue["review_status"].fillna(
+            "pending_independent_review"
+        )
+        for column in ["reviewed_by", "reviewed_at", "review_notes"]:
+            queue[column] = queue[column].fillna("")
+    result = (
+        queue[REVIEW_COLUMNS]
+        .sort_values(["symbol", "period_end", "metric", "observation_id"])
+        .reset_index(drop=True)
+    )
+    validate_phase4_verification_queue(result)
+    return result
+
+
 def validate_phase4_verification_queue(frame: pd.DataFrame) -> None:
     """拒绝无复核人或无复核时间的完成状态。"""
 

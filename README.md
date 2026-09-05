@@ -24,6 +24,8 @@ Phase 1的结论不是“模型有效”，而是完成了可证伪的研究。2
 
 **全市场分类与分派解析层已建立。** 公告目录中的95只证券均取得资产类型证据：14只为正式报告人工核验，81只为交易所公告标题明确命中，二者在状态字段中严格区分。1,626份定期报告／分派公告进入文档解析队列。495份分派公告中自动解析成功369份，并合并Phase 4已有视觉复核结果，形成378次实际DPU、覆盖67只证券的时点面板；每条事件均连接官方URL和SHA-256，并进入独立复核队列。当前126份自动失败明确保留，其中96份为深交所临时403、30份为无文字层扫描件，没有补值。
 
+**全市场年报基金事实层已建立。** 187份年报中122份成功提取期末基金份额和账面每份NAV，形成244条long-format观测，覆盖52只证券。与Phase 4已有30个重叠键逐项交叉核对，数值冲突为0。所有成功观测均带官方PDF的SHA-256和独立复核任务；65份深交所HTTP 403保留为失败。NAV只取年报直接披露的账面基金份净值，不使用资产评估值或公允价值参考净值代替。
+
 ## 核心研究问题
 
 1. C-REIT 市场是否已经足以支持一定规模的横截面研究？
@@ -114,6 +116,12 @@ python -m creit_quant.full_market_distributions
 
 # 不联网，从文档审计检查点重建DPU事件表
 python -m creit_quant.full_market_distributions --rebuild-from-audit
+
+# 联网增量构建全市场年末份额与账面NAV；需要Poppler/pdftotext
+python -m creit_quant.full_market_fundamentals
+
+# 不联网，从年报审计检查点重建观测与复核队列
+python -m creit_quant.full_market_fundamentals --rebuild-from-audit
 
 # 联网追加当日全市场 universe 快照
 python -m creit_quant.phase1_universe
@@ -257,6 +265,9 @@ c-reit-quant/
 │       ├── phase4_strategy_robustness.csv
 │       ├── phase4_capacity.csv
 │       ├── phase4_data_gates.csv
+│       ├── full_market_annual_document_audit.csv
+│       ├── full_market_annual_fundamentals.csv
+│       ├── full_market_annual_fundamentals_verification_queue.csv
 │       ├── 180201_quarterly_operating_metrics.csv
 │       ├── 180301_quarterly_operating_metrics.csv
 │       ├── 508018_quarterly_operating_metrics.csv
@@ -314,7 +325,8 @@ c-reit-quant/
 │   ├── run_phase3.py
 │   ├── run_phase4.py
 │   ├── build_phase4_fundamentals.py
-│   └── fetch_phase4_unadjusted_prices.py
+│   ├── fetch_phase4_unadjusted_prices.py
+│   └── run_full_market_fundamentals.py
 ├── src/creit_quant/
 │   ├── database.py
 │   ├── announcements.py
@@ -371,7 +383,7 @@ c-reit-quant/
 - 508028虽已有13季度发电量，但早期结算电量和利用小时缺失，报告内平均风速只有11期；508096在2024Q4前只稳定披露项目级结算电量和电价；180401在2024Q4前未形成完整发电指标表。早期转录仍待独立二次复核。
 - 508096扩募水电的2025Q4观测只覆盖2025年12月27—31日，不能当作完整季度；光伏／水电按0.01亿千瓦时披露的数值也无法恢复更高精度。
 - Phase 2全市场收益研究使用2026-08-28当前名单回看历史；仓库只有一个universe快照，结果存在幸存者偏差，不能作为部署证据。
-- 冻结行情快照中的94只证券有88只有历史行情，6只当时尚无历史。实际DPU已扩展至67只、378次事件；仍有96份深交所公告因临时403待重试，30份扫描件需要OCR或视觉复核。NAV与基金份额时点面板仍只覆盖8只研究样本。
+- 冻结行情快照中的94只证券有88只有历史行情，6只当时尚无历史。实际DPU已扩展至67只、378次事件；年末账面NAV与基金份额扩展至52只、244条观测。仍有96份分派公告和65份年报因深交所临时403待重试，30份分派扫描件需要OCR或视觉复核。
 - Phase 3跨资产结果只有8个季度，平均20日rank IC约0.02；正收益可能由少数持仓路径驱动，不构成可部署alpha证据。
 - 508018早期通行费披露为不含税、后期标准表为含税清分口径，数据库没有强行拼接；PDF表格转录虽已逐项核验，仍应进行独立二次复核。
 - Phase 4的6份508028无文字层扫描公告已经逐页视觉复核并保留独立覆盖表；413条机器抽取与6条视觉复核观测仍待独立人工复核。联合模型只有8期且没有规则冻结后的前瞻样本外季度。

@@ -3,6 +3,7 @@ import pytest
 from pathlib import Path
 
 from creit_quant.verification import (
+    build_fundamental_verification_queue,
     build_distribution_verification_queue,
     build_phase4_source_registry,
     build_phase4_verification_queue,
@@ -118,6 +119,20 @@ def test_distribution_review_queue_preserves_review_by_stable_observation_id():
 
     assert rebuilt.loc[0, "review_status"] == "confirmed"
     assert rebuilt.loc[0, "reviewed_by"] == "reviewer"
+
+
+def test_fundamental_review_queue_preserves_review_and_source_hash():
+    fundamentals, _ = _inputs()
+    fundamentals["source_sha256"] = "a" * 64
+    first = build_fundamental_verification_queue(fundamentals)
+    first.loc[0, "review_status"] = "confirmed"
+    first.loc[0, "reviewed_by"] = "reviewer"
+    first.loc[0, "reviewed_at"] = "2026-09-05T12:00:00+08:00"
+
+    rebuilt = build_fundamental_verification_queue(fundamentals, existing=first)
+
+    assert rebuilt.loc[0, "review_status"] == "confirmed"
+    assert rebuilt.loc[0, "source_sha256"] == "a" * 64
 
 
 def test_registered_source_metadata_fills_empty_fields(tmp_path):
