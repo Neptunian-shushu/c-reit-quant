@@ -137,6 +137,7 @@ def main() -> None:
     audit_paths = [
         args.out_dir / "full_market_distribution_document_audit.csv",
         args.out_dir / "full_market_annual_document_audit.csv",
+        args.out_dir / "full_market_periodic_document_audit.csv",
     ]
     audits = [
         pd.read_csv(path, dtype={"symbol": str})

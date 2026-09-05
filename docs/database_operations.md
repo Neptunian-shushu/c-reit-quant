@@ -16,6 +16,7 @@ python -m creit_quant.phase1_announcements
 python -m creit_quant.phase4_database --fetch-missing-hashes
 python -m creit_quant.full_market_distributions
 python -m creit_quant.full_market_fundamentals
+python -m creit_quant.full_market_periodic_fundamentals
 python -m creit_quant.phase4_database
 python -m pytest -q
 python -m creit_quant.phase4 --out-dir data/samples
@@ -26,15 +27,18 @@ python -m creit_quant.phase4 --out-dir data/samples
 ```bash
 python -m creit_quant.full_market_distributions --rebuild-from-audit
 python -m creit_quant.full_market_fundamentals --rebuild-from-audit
+python -m creit_quant.full_market_periodic_fundamentals --rebuild-from-audit
 ```
 
 年报程序依赖系统`pdftotext`（Poppler）。它只提取报告期末基金份额和账面每份NAV，显式排除公允价值参考净值。`--retry-parse-failures`只重试失败的上交所年报；深交所403应等待冷却或上游恢复后再重试。
+
+季报／中报程序使用`distributable_amount_period`通用指标名，并保留`document_type`；因此中报的半年累计值不会被误标为单季度值。同日存在更正稿时优先更正文档；原始和更正文档仍都保留在审计表。
 
 `needs_ocr_or_visual_review`不得自动补值。`fetch_or_parse_failed`先区分HTTP限流和规则失败；深交所403应在冷却后增量重试，不得改用未经核验的二手数字。
 
 ## 独立复核
 
-`phase4_verification_queue.csv`、`full_market_distribution_verification_queue.csv`和`full_market_annual_fundamentals_verification_queue.csv`按观测保存稳定SHA-256 ID。复核人只修改`review_status`、`reviewed_by`、`reviewed_at`和`review_notes`：
+`phase4_verification_queue.csv`、`full_market_distribution_verification_queue.csv`、`full_market_annual_fundamentals_verification_queue.csv`和`full_market_periodic_fundamentals_verification_queue.csv`按观测保存稳定SHA-256 ID。复核人只修改`review_status`、`reviewed_by`、`reviewed_at`和`review_notes`：
 
 - `pending_independent_review`：尚未独立核对；
 - `confirmed`：与正式公告一致；

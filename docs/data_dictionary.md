@@ -240,6 +240,12 @@
 
 `full_market_annual_fundamentals_verification_queue.csv`为244条年报事实生成稳定ID。`machine_extracted_official_pdf`只表示机器从官方文件取值；在复核人填写`confirmed`、姓名和带时区时间前，不能宣称完成独立人工核验。
 
+`full_market_periodic_document_audit.csv`粒度为每份季报或中报，并保留`is_corrected`。`full_market_periodic_fundamentals.csv`粒度为证券、报告期、公布日和指标；同日有更正稿时优先更正文档。`distributable_amount_period`和`distributable_amount_per_unit_period`的实际时间长度由`document_type`决定：季报是当期季度，中报是半年报告期。
+
+`full_market_periodic_reconciliation.csv`每个唯一报告时点一行，保存披露单位金额、“可供分配金额／期末份额”计算值和绝对差。`within_disclosure_precision`允许不超过0.0051元的早期两位小数披露误差；超出后标记`needs_review`，不自动修改原数。
+
+`full_market_fundamentals.csv`是季报、中报和年报的统一消费层。当前允许`fund_shares`、`distributable_amount_period`、`distributable_amount_per_unit_period`和`nav_per_unit`；必须同时按`publication_date`和`document_type`取值，不能只按`period_end`直接覆盖。
+
 ### `phase4_unadjusted_prices`
 
 8只主样本每个交易日一行，`adjustment=none`。该表只用于计算历史DPU yield、NAV/price和含分派20日动量；策略收益仍使用冻结的后复权快照。禁止用后复权价格的历史绝对水平计算收益率型估值。
@@ -294,5 +300,10 @@
 - `full_market_annual_document_audit.csv`：187份年报的抓取、哈希和失败审计。
 - `full_market_annual_fundamentals.csv`：122份年报产生的244条期末份额与账面NAV观测，覆盖52只证券。
 - `full_market_annual_fundamentals_verification_queue.csv`：244条年报基金事实的独立复核任务。
+- `full_market_periodic_document_audit.csv`：944份季报／中报的抓取、哈希、更正稿和失败审计。
+- `full_market_periodic_fundamentals.csv`：2,972条季报／中报基金事实，覆盖81只证券。
+- `full_market_periodic_reconciliation.csv`：939个报告时点的金额／份额勾稽结果。
+- `full_market_periodic_fundamentals_verification_queue.csv`：2,972条定期报告事实的独立复核任务。
+- `full_market_fundamentals.csv`：3,216条季报、中报和年报统一基金事实。
 
 Phase 1数据库命令导出的文件属于可重复生成分析数据，默认不提交仓库。Phase 2派生表随冻结行情提交，能源结果可由`python -m creit_quant.phase2`离线重建，全市场结果可由`python -m creit_quant.phase2_market`离线重建。Phase 4联合结果可由`python -m creit_quant.phase4`离线重建；基金指标原始PDF仍只在仓库外受控保存。
